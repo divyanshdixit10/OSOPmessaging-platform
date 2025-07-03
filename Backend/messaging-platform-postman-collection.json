@@ -1,0 +1,504 @@
+{
+	"info": {
+		"_postman_id": "c5b2e3d4-f6a7-48b9-9c0d-e1f2a3b4c5d6",
+		"name": "OSOP Coding Messaging Platform API",
+		"description": "Collection for testing the OSOP Coding Messaging Platform API with Email, WhatsApp, and SMS endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Environment Setup",
+			"item": [
+				{
+					"name": "Local Environment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Health check endpoint to verify the application is running"
+					},
+					"response": []
+				}
+			],
+			"description": "Environment setup and health check"
+		},
+		{
+			"name": "Email",
+			"item": [
+				{
+					"name": "Send Email (OSOP Coding)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"EMAIL\",\n    \"recipients\": [\"{{test_email}}\"],\n    \"subject\": \"Welcome to OSOP Coding\",\n    \"message\": \"<h1>Welcome to OSOP Coding!</h1><p>This is a test email from OSOP Coding's Messaging Platform. You'll see our name 'OSOP Coding' in the sender field.</p>\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send a test email that will show OSOP Coding as the sender name"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Email with Attachment (OSOP Coding)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "channel",
+									"value": "EMAIL",
+									"type": "text"
+								},
+								{
+									"key": "recipients",
+									"value": "{{test_email}}",
+									"type": "text"
+								},
+								{
+									"key": "subject",
+									"value": "OSOP Coding - Document Attached",
+									"type": "text"
+								},
+								{
+									"key": "message",
+									"value": "<h1>OSOP Coding Document</h1><p>Please find the attached document from OSOP Coding.</p>",
+									"type": "text"
+								},
+								{
+									"key": "attachment",
+									"type": "file",
+									"src": "/path/to/your/file.pdf"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send-with-attachment",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send-with-attachment"
+							]
+						},
+						"description": "Send an email with attachment from OSOP Coding"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Bulk Email to OSOP Team",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"EMAIL\",\n    \"recipients\": [\n        \"adityabajpai2230@gmail.com\",\n        \"adityabajpai223022@gmail.com\",\n        \"dixitdivyanshsanawad@gmail.com\",\n        \"divyansh.osop@gmail.com\",\n        \"rishi.vyas199@gmail.com\",\n        \"dharmendra.bajpai2@gmail.com\",\n        \"osopcoding@gmail.com\",\n        \"oips.bajpaimanish@gmail.com\",\n        \"oipsbajpaimanish@gmail.com\",\n        \"online.rajmohalla@gmail.com\",\n        \"osopcode@gmail.com\",\n        \"osopcoding.dev@gmail.com\",\n        \"protonpreschool@gmail.com\",\n        \"aditya.osop22@gmail.com\",\n        \"osopcoding2@gmail.com\"\n    ],\n    \"subject\": \"Important Update from OSOP Coding\",\n    \"message\": \"<h1>Hello OSOP Team!</h1><p>This is a test email from our messaging platform. You should see this email coming from 'OSOP Coding'.</p>\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send a bulk email to all OSOP team members"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Email with Multiple Attachments",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "channel",
+									"value": "EMAIL",
+									"type": "text"
+								},
+								{
+									"key": "recipients",
+									"value": "{{test_email}}",
+									"type": "text"
+								},
+								{
+									"key": "subject",
+									"value": "OSOP Coding - Multiple Attachments Test",
+									"type": "text"
+								},
+								{
+									"key": "message",
+									"value": "<h1>Multiple Attachments Test</h1><p>This email contains multiple attachments of different types (PDF and images).</p>",
+									"type": "text"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": "/path/to/your/document.pdf",
+									"description": "PDF Document"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": "/path/to/your/image.jpg",
+									"description": "Image file"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": "/path/to/your/image2.png",
+									"description": "Another image file"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send-with-attachment",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send-with-attachment"
+							]
+						},
+						"description": "Send an email with multiple attachments (PDF and images) from OSOP Coding"
+					},
+					"response": []
+				}
+			],
+			"description": "Email messaging endpoints with OSOP Coding branding"
+		},
+		{
+			"name": "WhatsApp",
+			"item": [
+				{
+					"name": "Send WhatsApp Message (OSOP Coding)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"WHATSAPP\",\n    \"recipients\": [\"{{test_phone}}\"],\n    \"message\": \"Hello! This is OSOP Coding. Welcome to our messaging platform.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send a WhatsApp message from OSOP Coding business account"
+					},
+					"response": []
+				},
+				{
+					"name": "Send WhatsApp Template (OSOP Coding)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"WHATSAPP\",\n    \"recipients\": [\"{{test_phone}}\"],\n    \"templateId\": \"welcome_template\",\n    \"placeholders\": {\n        \"business_name\": \"OSOP Coding\",\n        \"service_name\": \"Messaging Platform\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send a WhatsApp template message with OSOP Coding branding"
+					},
+					"response": []
+				}
+			],
+			"description": "WhatsApp messaging endpoints with OSOP Coding business profile"
+		},
+		{
+			"name": "SMS",
+			"item": [
+				{
+					"name": "Send SMS (OSOPCDG)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"SMS\",\n    \"recipients\": [\"{{test_phone}}\"],\n    \"message\": \"OSOP Coding: Welcome to our messaging platform! This message is sent from our official sender ID OSOPCDG.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send an SMS with OSOPCDG sender ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Send SMS Template (OSOPCDG)",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"channel\": \"SMS\",\n    \"recipients\": [\"{{test_phone}}\"],\n    \"templateId\": \"welcome_template\",\n    \"placeholders\": {\n        \"company\": \"OSOP Coding\",\n        \"service\": \"Messaging Platform\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/message/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"message",
+								"send"
+							]
+						},
+						"description": "Send an SMS template with OSOPCDG sender ID"
+					},
+					"response": []
+				}
+			],
+			"description": "SMS messaging endpoints with OSOPCDG sender ID"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test(\"Status code is 200\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});",
+					"",
+					"pm.test(\"Response has success status\", function () {",
+					"    var jsonData = pm.response.json();",
+					"    pm.expect(jsonData.status).to.be.oneOf(['SUCCESS', 'PARTIAL']);",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "your.email@example.com",
+			"type": "string"
+		},
+		{
+			"key": "test_phone",
+			"value": "919876543210",
+			"type": "string"
+		}
+	]
+} 
