@@ -59,7 +59,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ files, onFilesChange }) => 
         <input {...getInputProps()} />
         <VStack spacing={2}>
           <Icon 
-            as={MdCloudUpload} 
+            as={MdCloudUpload as any} 
             fontSize="32px" 
             color={isDragActive ? 'blue.500' : 'gray.500'} 
           />
@@ -91,7 +91,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ files, onFilesChange }) => 
                 </Text>
                 <IconButton
                   aria-label="Remove file"
-                  icon={<Icon as={MdDelete} fontSize="20px" />}
+                  icon={<Icon as={MdDelete as any} fontSize="20px" />}
                   size="sm"
                   variant="ghost"
                   colorScheme="red"

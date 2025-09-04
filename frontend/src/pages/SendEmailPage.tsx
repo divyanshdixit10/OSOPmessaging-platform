@@ -18,15 +18,36 @@ import {
   Tabs,
   Text,
   VStack,
-  useToast
+  useToast,
+  Card,
+  CardBody,
+  CardHeader,
+  Heading,
+  Badge,
+  Icon,
+  Progress,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
+import {
+  FiMail,
+  FiUsers,
+  FiPaperclip,
+  FiEye,
+  FiSend,
+  FiBarChart,
+  FiShield,
+  FiLink,
+} from 'react-icons/fi';
 import { EmailEditor } from '../components/EmailEditor';
 import { RecipientUploader } from '../components/RecipientUploader';
 import { TemplateSelector } from '../components/TemplateSelector';
 import { BulkEmailRequest, Recipient } from '../types/EmailRequest';
 import { EmailTemplate } from '../types/EmailTemplate';
 import { sendBulkEmail } from '../api/messageService';
-import { fetchTemplates, saveTemplate } from '../api/templateService';
+import TemplateService from '../api/templateService';
 import FileUploader from '../components/FileUploader';
 
 const SendEmailPage: React.FC = () => {
@@ -39,6 +60,7 @@ const SendEmailPage: React.FC = () => {
   const [trackClicks, setTrackClicks] = useState(true);
   const [addUnsubscribeLink, setAddUnsubscribeLink] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [campaignProgress, setCampaignProgress] = useState(0);
   const toast = useToast();
 
   useEffect(() => {
@@ -47,8 +69,8 @@ const SendEmailPage: React.FC = () => {
 
   const loadTemplates = async () => {
     try {
-      const loadedTemplates = await fetchTemplates();
-      setTemplates(loadedTemplates);
+      const response = await TemplateService.getTemplatesWithFallback();
+      setTemplates(response.content);
     } catch (error) {
       toast({
         title: 'Error loading templates',
@@ -61,8 +83,8 @@ const SendEmailPage: React.FC = () => {
 
   const handleTemplateSave = async (template: EmailTemplate) => {
     try {
-      const savedTemplate = await saveTemplate(template);
-      await loadTemplates(); // Reload all templates to ensure we have the latest list
+      const savedTemplate = await TemplateService.createTemplate(template);
+      await loadTemplates();
       setSelectedTemplate(savedTemplate);
       return savedTemplate;
     } catch (error) {
@@ -96,6 +118,19 @@ const SendEmailPage: React.FC = () => {
     }
 
     setIsLoading(true);
+    setCampaignProgress(0);
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setCampaignProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
     try {
       // Create FormData for multipart/form-data
       const formData = new FormData();
@@ -123,18 +158,24 @@ const SendEmailPage: React.FC = () => {
 
       await sendBulkEmail(formData);
       
+      setCampaignProgress(100);
+      
       toast({
         title: 'Success',
-        description: 'Email sent successfully',
+        description: `Email campaign sent successfully to ${recipients.length} recipients`,
         status: 'success',
-        duration: 3000,
+        duration: 5000,
       });
 
-      // Reset form
-      setRecipients([]);
-      setSelectedTemplate(undefined);
-      setAttachments([]);
-      setMediaUrls('');
+      // Reset form after delay
+      setTimeout(() => {
+        setRecipients([]);
+        setSelectedTemplate(undefined);
+        setAttachments([]);
+        setMediaUrls('');
+        setCampaignProgress(0);
+      }, 2000);
+
     } catch (error) {
       toast({
         title: 'Error',
@@ -144,66 +185,211 @@ const SendEmailPage: React.FC = () => {
       });
     } finally {
       setIsLoading(false);
+      clearInterval(progressInterval);
     }
   };
 
+  const getCampaignStats = () => {
+    const totalRecipients = recipients.length;
+    const hasAttachments = attachments.length > 0;
+    const hasMedia = mediaUrls.trim().length > 0;
+    const trackingEnabled = trackOpens || trackClicks;
+
+    return {
+      totalRecipients,
+      hasAttachments,
+      hasMedia,
+      trackingEnabled,
+      estimatedDelivery: totalRecipients > 1000 ? 'Bulk delivery (2-4 hours)' : 'Immediate delivery',
+    };
+  };
+
+  const stats = getCampaignStats();
+
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Grid templateColumns="repeat(3, 1fr)" gap={8}>
-          <GridItem colSpan={2}>
-            <Tabs>
-              <TabList>
-                <Tab>Compose</Tab>
-                <Tab>Preview</Tab>
-              </TabList>
+    <VStack spacing={8} align="stretch">
+      {/* Header */}
+      <Box>
+        <Heading size="lg" color="gray.800" mb={2}>
+          Send Email Campaign
+        </Heading>
+        <Text color="gray.600">
+          Create and send professional email campaigns with advanced tracking and analytics.
+        </Text>
+      </Box>
 
-              <TabPanels>
-                <TabPanel p={0} pt={4}>
-                  <VStack spacing={6} align="stretch">
-                    <TemplateSelector
-                      templates={templates}
-                      selectedTemplate={selectedTemplate}
-                      onTemplateSelect={handleTemplateSelect}
-                      onTemplateSave={handleTemplateSave}
-                    />
+      {/* Campaign Progress */}
+      {isLoading && (
+        <Card>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <HStack justify="space-between">
+                <Text fontWeight="medium" color="gray.700">
+                  Sending Campaign...
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  {campaignProgress}% Complete
+                </Text>
+              </HStack>
+              <Progress value={campaignProgress} colorScheme="brand" size="lg" borderRadius="full" />
+              <Text fontSize="sm" color="gray.600">
+                {campaignProgress < 50 ? 'Preparing campaign...' : 
+                 campaignProgress < 90 ? 'Sending emails...' : 'Finalizing...'}
+              </Text>
+            </VStack>
+          </CardBody>
+        </Card>
+      )}
 
+      {/* Campaign Overview */}
+      <Card>
+        <CardHeader>
+          <Heading size="md" color="gray.800">
+            Campaign Overview
+          </Heading>
+        </CardHeader>
+        <CardBody>
+          <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
+            <Box textAlign="center" p={4} bg="blue.50" borderRadius="lg">
+              <Icon as={FiUsers as any} boxSize={6} color="blue.500" mb={2} />
+              <Text fontSize="2xl" fontWeight="bold" color="blue.700">
+                {stats.totalRecipients}
+              </Text>
+              <Text fontSize="sm" color="blue.600">
+                Recipients
+              </Text>
+            </Box>
+            
+            <Box textAlign="center" p={4} bg="green.50" borderRadius="lg">
+              <Icon as={FiMail as any} boxSize={6} color="green.500" mb={2} />
+              <Text fontSize="2xl" fontWeight="bold" color="green.700">
+                {selectedTemplate ? 'Ready' : 'Draft'}
+              </Text>
+              <Text fontSize="sm" color="green.600">
+                Status
+              </Text>
+            </Box>
+            
+            <Box textAlign="center" p={4} bg="purple.50" borderRadius="lg">
+                              <Icon as={FiBarChart as any} boxSize={6} color="purple.500" mb={2} />
+              <Text fontSize="2xl" fontWeight="bold" color="purple.700">
+                {stats.trackingEnabled ? 'Enabled' : 'Disabled'}
+              </Text>
+              <Text fontSize="sm" color="purple.600">
+                Tracking
+              </Text>
+            </Box>
+            
+            <Box textAlign="center" p={4} bg="orange.50" borderRadius="lg">
+              <Icon as={FiPaperclip as any} boxSize={6} color="orange.500" mb={2} />
+              <Text fontSize="2xl" fontWeight="bold" color="orange.700">
+                {attachments.length + (stats.hasMedia ? 1 : 0)}
+              </Text>
+              <Text fontSize="sm" color="orange.600">
+                Attachments
+              </Text>
+            </Box>
+          </Grid>
+        </CardBody>
+      </Card>
+
+      {/* Main Campaign Builder */}
+      <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={8}>
+        {/* Left Column - Email Composition */}
+        <GridItem>
+          <Card>
+            <CardHeader>
+              <Heading size="md" color="gray.800">
+                Email Content
+              </Heading>
+            </CardHeader>
+            <CardBody>
+              <Tabs variant="enclosed" colorScheme="brand">
+                <TabList>
+                  <Tab>
+                    <HStack spacing={2}>
+                      <Icon as={FiMail as any} />
+                      <Text>Compose</Text>
+                    </HStack>
+                  </Tab>
+                  <Tab>
+                    <HStack spacing={2}>
+                      <Icon as={FiEye as any} />
+                      <Text>Preview</Text>
+                    </HStack>
+                  </Tab>
+                </TabList>
+
+                <TabPanels>
+                  <TabPanel p={0} pt={4}>
+                    <VStack spacing={6} align="stretch">
+                      <TemplateSelector
+                        templates={templates}
+                        selectedTemplate={selectedTemplate}
+                        onTemplateSelect={handleTemplateSelect}
+                        onTemplateSave={handleTemplateSave}
+                      />
+
+                      <EmailEditor
+                        subject={selectedTemplate?.subject || ''}
+                        body={selectedTemplate?.body || ''}
+                        onSubjectChange={(subject) => updateTemplateField('subject', subject)}
+                        onBodyChange={(body) => updateTemplateField('body', body)}
+                      />
+                    </VStack>
+                  </TabPanel>
+
+                  <TabPanel p={0} pt={4}>
                     <EmailEditor
                       subject={selectedTemplate?.subject || ''}
                       body={selectedTemplate?.body || ''}
                       onSubjectChange={(subject) => updateTemplateField('subject', subject)}
                       onBodyChange={(body) => updateTemplateField('body', body)}
+                      isPreview
                     />
-                  </VStack>
-                </TabPanel>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </CardBody>
+          </Card>
+        </GridItem>
 
-                <TabPanel p={0} pt={4}>
-                  <EmailEditor
-                    subject={selectedTemplate?.subject || ''}
-                    body={selectedTemplate?.body || ''}
-                    onSubjectChange={(subject) => updateTemplateField('subject', subject)}
-                    onBodyChange={(body) => updateTemplateField('body', body)}
-                    isPreview
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </GridItem>
+        {/* Right Column - Campaign Settings */}
+        <GridItem>
+          <VStack spacing={6} align="stretch">
+            {/* Recipients */}
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
+                  Recipients
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <RecipientUploader
+                  recipients={recipients}
+                  onRecipientsChange={setRecipients}
+                />
+              </CardBody>
+            </Card>
 
-          <GridItem>
-            <VStack spacing={6} align="stretch">
-              <RecipientUploader
-                recipients={recipients}
-                onRecipientsChange={setRecipients}
-              />
-
-              <Box>
-                <Text fontWeight="bold" mb={4}>Advanced Options</Text>
+            {/* Tracking Options */}
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
+                  Tracking & Analytics
+                </Heading>
+              </CardHeader>
+              <CardBody>
                 <VStack spacing={4} align="stretch">
                   <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="track-opens" mb="0">
-                      Track Opens
-                    </FormLabel>
+                    <Box flex="1">
+                      <FormLabel htmlFor="track-opens" mb="0">
+                        Track Opens
+                      </FormLabel>
+                      <Text fontSize="sm" color="gray.600">
+                        Monitor email open rates
+                      </Text>
+                    </Box>
                     <Switch
                       id="track-opens"
                       isChecked={trackOpens}
@@ -212,9 +398,14 @@ const SendEmailPage: React.FC = () => {
                   </FormControl>
 
                   <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="track-clicks" mb="0">
-                      Track Clicks
-                    </FormLabel>
+                    <Box flex="1">
+                      <FormLabel htmlFor="track-clicks" mb="0">
+                        Track Clicks
+                      </FormLabel>
+                      <Text fontSize="sm" color="gray.600">
+                        Monitor link click-through rates
+                      </Text>
+                    </Box>
                     <Switch
                       id="track-clicks"
                       isChecked={trackClicks}
@@ -223,9 +414,14 @@ const SendEmailPage: React.FC = () => {
                   </FormControl>
 
                   <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="unsubscribe-link" mb="0">
-                      Add Unsubscribe Link
-                    </FormLabel>
+                    <Box flex="1">
+                      <FormLabel htmlFor="unsubscribe-link" mb="0">
+                        Add Unsubscribe Link
+                      </FormLabel>
+                      <Text fontSize="sm" color="gray.600">
+                        Compliant with email regulations
+                      </Text>
+                    </Box>
                     <Switch
                       id="unsubscribe-link"
                       isChecked={addUnsubscribeLink}
@@ -233,48 +429,124 @@ const SendEmailPage: React.FC = () => {
                     />
                   </FormControl>
                 </VStack>
-              </Box>
+              </CardBody>
+            </Card>
 
-              <Box>
-                <Text fontSize="2xl" fontWeight="bold" color="gray.700">
+            {/* Attachments & Media */}
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
                   Attachments & Media
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4} align="stretch">
+                  <FormControl>
+                    <FormLabel>File Attachments</FormLabel>
+                    <FileUploader
+                      files={attachments}
+                      onFilesChange={setAttachments}
+                    />
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel>Media URLs (Optional)</FormLabel>
+                    <Input
+                      value={mediaUrls}
+                      onChange={(e) => setMediaUrls(e.target.value)}
+                      placeholder="Enter comma-separated URLs"
+                    />
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      Separate multiple URLs with commas
+                    </Text>
+                  </FormControl>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Delivery Information */}
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
+                  Delivery Information
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={3} align="stretch">
+                  <Box>
+                    <Text fontSize="sm" color="gray.600">Estimated Delivery</Text>
+                    <Text fontWeight="medium" color="gray.800">{stats.estimatedDelivery}</Text>
+                  </Box>
+                  
+                  <Box>
+                    <Text fontSize="sm" color="gray.600">Campaign Size</Text>
+                    <Text fontWeight="medium" color="gray.800">
+                      {stats.totalRecipients > 1000 ? 'Bulk Campaign' : 'Standard Campaign'}
+                    </Text>
+                  </Box>
+
+                  {stats.hasAttachments && (
+                    <Box>
+                      <Text fontSize="sm" color="gray.600">Attachments</Text>
+                      <Text fontWeight="medium" color="gray.800">
+                        {attachments.length} file(s) attached
+                      </Text>
+                    </Box>
+                  )}
+                </VStack>
+              </CardBody>
+            </Card>
+          </VStack>
+        </GridItem>
+      </Grid>
+
+      {/* Send Campaign */}
+      <Card>
+        <CardBody>
+          <VStack spacing={4} align="stretch">
+            {recipients.length > 0 && selectedTemplate && (
+              <Alert status="info">
+                <AlertIcon />
+                <Box>
+                  <AlertTitle>Campaign Ready!</AlertTitle>
+                  <AlertDescription>
+                    Your campaign is ready to send to {recipients.length} recipients. 
+                    Review the content and settings before sending.
+                  </AlertDescription>
+                </Box>
+              </Alert>
+            )}
+
+            <HStack justify="space-between" align="center">
+              <VStack align="flex-start" spacing={1}>
+                <Text fontSize="lg" fontWeight="medium" color="gray.700">
+                  Ready to Send?
                 </Text>
-                
-                <FormControl>
-                  <FormLabel>File Attachments</FormLabel>
-                  <FileUploader
-                    files={attachments}
-                    onFilesChange={setAttachments}
-                  />
-                </FormControl>
+                <Text fontSize="sm" color="gray.500">
+                  {recipients.length > 0 && selectedTemplate 
+                    ? `Campaign will be sent to ${recipients.length} recipients`
+                    : 'Complete all required fields to send campaign'
+                  }
+                </Text>
+              </VStack>
 
-                <FormControl>
-                  <FormLabel>Media URLs (Optional)</FormLabel>
-                  <Input
-                    value={mediaUrls}
-                    onChange={(e) => setMediaUrls(e.target.value)}
-                    placeholder="Enter comma-separated URLs (e.g., https://example.com/image.jpg, https://example.com/doc.pdf)"
-                  />
-                </FormControl>
-              </Box>
-            </VStack>
-          </GridItem>
-        </Grid>
-
-        <HStack justify="flex-end" spacing={4}>
-          <Button
-            colorScheme="blue"
-            size="lg"
-            isLoading={isLoading}
-            onClick={handleSendEmail}
-            isDisabled={!selectedTemplate || recipients.length === 0}
-          >
-            Send Email
-          </Button>
-        </HStack>
-      </VStack>
-    </Container>
+              <Button
+                colorScheme="brand"
+                size="lg"
+                leftIcon={<Icon as={FiSend as any} />}
+                isLoading={isLoading}
+                onClick={handleSendEmail}
+                isDisabled={!selectedTemplate || recipients.length === 0}
+                loadingText="Sending Campaign..."
+              >
+                Send Campaign
+              </Button>
+            </HStack>
+          </VStack>
+        </CardBody>
+      </Card>
+    </VStack>
   );
 };
 
-export default SendEmailPage; 
+export { SendEmailPage }; 

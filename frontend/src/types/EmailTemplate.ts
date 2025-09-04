@@ -3,9 +3,15 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   body: string;
+  category?: string;
+  type?: string;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
   isDefault?: boolean;
+  isActive?: boolean;
+  description?: string;
+  variables?: string;
 }
 
 export interface EmailTemplateFormData {

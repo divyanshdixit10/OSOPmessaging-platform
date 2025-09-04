@@ -54,7 +54,7 @@ const ChannelSelector: React.FC<ChannelSelectorProps> = ({ value, onChange }) =>
               {channel}
             </Radio>
             <Center flexDirection="column" gap={2}>
-              <Icon as={IconComponent} fontSize="24px" />
+              <Icon as={IconComponent as any} fontSize="24px" />
               <Box fontSize="sm" fontWeight="medium">
                 {channel}
               </Box>
