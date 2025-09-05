@@ -80,7 +80,8 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         <Select
           value={selectedTemplate?.id || ''}
           onChange={(e) => {
-            const template = templates.find(t => t.id === e.target.value);
+            const templateId = parseInt(e.target.value);
+            const template = templates.find(t => t.id === templateId);
             if (template) onTemplateSelect(template);
           }}
           placeholder="Choose a template"

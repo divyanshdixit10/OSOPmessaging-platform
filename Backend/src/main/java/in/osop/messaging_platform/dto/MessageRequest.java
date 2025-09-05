@@ -51,4 +51,7 @@ public class MessageRequest {
     // Optional fields for email
     private List<String> cc;
     private List<String> bcc;
+    
+    // Internal tracking field
+    private Long emailEventId;
 } 

@@ -37,9 +37,11 @@ public class Subscriber {
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private SubscriptionStatus status = SubscriptionStatus.ACTIVE;
     
     @Column(name = "is_verified")
+    @Builder.Default
     private Boolean isVerified = false;
     
     @Column(name = "verification_token")
@@ -67,12 +69,15 @@ public class Subscriber {
     private LocalDateTime lastEmailClickedAt;
     
     @Column(name = "total_emails_sent")
+    @Builder.Default
     private Integer totalEmailsSent = 0;
     
     @Column(name = "total_emails_opened")
+    @Builder.Default
     private Integer totalEmailsOpened = 0;
     
     @Column(name = "total_emails_clicked")
+    @Builder.Default
     private Integer totalEmailsClicked = 0;
     
     @Column(name = "created_by")

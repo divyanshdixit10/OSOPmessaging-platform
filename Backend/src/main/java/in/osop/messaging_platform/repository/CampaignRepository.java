@@ -59,4 +59,10 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     
     @Query("SELECT AVG(c.clickRate) FROM Campaign c WHERE c.status = 'COMPLETED' AND c.clickRate IS NOT NULL")
     Double getAverageClickRate();
+    
+    // Count campaigns by status list
+    long countByStatusIn(List<CampaignStatus> statuses);
+    
+    // Find top recent campaigns
+    List<Campaign> findTop5ByOrderByCreatedAtDesc();
 }

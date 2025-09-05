@@ -6,8 +6,14 @@ import in.osop.messaging_platform.exception.MessagingException;
 import in.osop.messaging_platform.model.MessageChannel;
 import in.osop.messaging_platform.model.MessageLog;
 import in.osop.messaging_platform.model.MessageStatus;
+import in.osop.messaging_platform.model.EmailEvent;
+import in.osop.messaging_platform.model.EmailEventType;
 import in.osop.messaging_platform.repository.MessageLogRepository;
+import in.osop.messaging_platform.repository.EmailEventRepository;
 import in.osop.messaging_platform.service.EmailService;
+import in.osop.messaging_platform.service.EmailTrackingService;
+import in.osop.messaging_platform.service.EmailValidationService;
+import in.osop.messaging_platform.service.EmailDeliveryTrackingService;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +23,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -29,21 +38,59 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
     private final MessageLogRepository messageLogRepository;
+    private final EmailEventRepository emailEventRepository;
+    private final EmailTrackingService emailTrackingService;
+    private final EmailValidationService emailValidationService;
+    private final EmailDeliveryTrackingService emailDeliveryTrackingService;
 
     @Override
     public MessageResponse sendEmail(MessageRequest request) {
         Map<String, MessageStatus> details = new HashMap<>();
         List<String> recipients = request.getRecipients();
         
+        // Pre-validate all emails before sending
+        Map<String, EmailValidationService.ValidationResult> validationResults = 
+            emailValidationService.validateEmails(recipients);
+        
         for (String recipient : recipients) {
+            EmailValidationService.ValidationResult validation = validationResults.get(recipient);
+            
+            if (!validation.isValid()) {
+                log.warn("Email validation failed for {}: {}", recipient, validation.getReason());
+                details.put(recipient, MessageStatus.FAILED);
+                logMessage(recipient, request.getMessage(), MessageStatus.FAILED, 
+                    "Validation failed: " + validation.getReason());
+                
+                // Create EmailEvent record for failed validation
+                createEmailEvent(recipient, request, EmailEventType.BOUNCED);
+                continue;
+            }
+            
             try {
                 sendEmailToRecipient(recipient, request);
                 details.put(recipient, MessageStatus.SENT);
                 logMessage(recipient, request.getMessage(), MessageStatus.SENT, null);
+                
+                // Create EmailEvent record for analytics
+                Long emailEventId = createEmailEvent(recipient, request, EmailEventType.SENT);
+                request.setEmailEventId(emailEventId); // Store for tracking
+                
+                // Track delivery status
+                emailDeliveryTrackingService.trackDeliveryStatus(emailEventId, 
+                    EmailDeliveryTrackingService.DeliveryStatus.SENT, 
+                    Map.of("validationScore", validation.getReputationScore()));
+                
             } catch (Exception e) {
                 log.error("Failed to send email to {}: {}", recipient, e.getMessage());
                 details.put(recipient, MessageStatus.FAILED);
                 logMessage(recipient, request.getMessage(), MessageStatus.FAILED, e.getMessage());
+                
+                // Create EmailEvent record for failed emails
+                Long emailEventId = createEmailEvent(recipient, request, EmailEventType.BOUNCED);
+                if (emailEventId != null) {
+                    emailDeliveryTrackingService.handleBounce(emailEventId, 
+                        EmailDeliveryTrackingService.BounceType.UNKNOWN, e.getMessage());
+                }
             }
         }
         
@@ -61,12 +108,17 @@ public class EmailServiceImpl implements EmailService {
     }
     
     private void sendEmailToRecipient(String recipient, MessageRequest request) throws jakarta.mail.MessagingException {
+        // Validate email format
+        if (!isValidEmail(recipient)) {
+            throw new MessagingException("Invalid email format: " + recipient);
+        }
+        
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         
         helper.setTo(recipient);
         try {
-            helper.setFrom("divyansh.osop@gmail.com", "OSOP Coding");
+            helper.setFrom("osopcoding3@gmail.com", "OSOP Coding");
         } catch (UnsupportedEncodingException e) {
             throw new MessagingException("Failed to set sender name: " + e.getMessage(), e);
         }
@@ -125,6 +177,9 @@ public class EmailServiceImpl implements EmailService {
             );
         }
         
+        // Add tracking pixel and click tracking
+        emailContent = addTrackingToEmail(emailContent, recipient, request);
+        
         if (request.isAddUnsubscribeLink()) {
             String unsubscribeLink = String.format(
                 "<div class='footer'><small><a href='http://localhost:8080/api/unsubscribe/%s'>Unsubscribe</a></small></div>",
@@ -167,5 +222,82 @@ public class EmailServiceImpl implements EmailService {
                 .build();
         
         messageLogRepository.save(log);
+    }
+    
+    private Long createEmailEvent(String recipient, MessageRequest request, EmailEventType eventType) {
+        try {
+            // Create EmailEvent record for analytics
+            EmailEvent emailEvent = EmailEvent.builder()
+                    .email(recipient)
+                    .eventType(eventType)
+                    .eventData(Map.of(
+                        "subject", request.getSubject() != null ? request.getSubject() : "No Subject",
+                        "templateId", request.getTemplateId() != null ? request.getTemplateId() : "none",
+                        "sentAt", LocalDateTime.now().toString()
+                    ).toString())
+                    .createdAt(LocalDateTime.now())
+                    .processed(false)
+                    .build();
+            
+            EmailEvent savedEvent = emailEventRepository.save(emailEvent);
+            log.info("Created EmailEvent record for {} with type {} and ID {}", recipient, eventType, savedEvent.getId());
+            return savedEvent.getId();
+            
+        } catch (Exception e) {
+            log.error("Failed to create EmailEvent record for {}: {}", recipient, e.getMessage());
+            return null;
+        }
+    }
+    
+    private String addTrackingToEmail(String emailContent, String recipient, MessageRequest request) {
+        try {
+            // Add tracking pixel for open tracking
+            if (request.isTrackOpens() && request.getEmailEventId() != null) {
+                String trackingData = Base64.getEncoder().encodeToString(
+                    (request.getEmailEventId() + "|" + recipient).getBytes()
+                );
+                String trackingPixel = String.format(
+                    "<img src='http://localhost:8080/api/tracking/open/%s' width='1' height='1' style='display:none;' alt='' />",
+                    trackingData
+                );
+                
+                // Add tracking pixel before closing body tag
+                if (emailContent.contains("</body>")) {
+                    emailContent = emailContent.replace("</body>", trackingPixel + "</body>");
+                } else {
+                    emailContent += trackingPixel;
+                }
+            }
+            
+            // Add click tracking to all links
+            if (request.isTrackClicks() && request.getEmailEventId() != null) {
+                String trackingData = Base64.getEncoder().encodeToString(
+                    (request.getEmailEventId() + "|" + recipient + "|").getBytes()
+                );
+                
+                // Replace all href attributes with tracking URLs
+                emailContent = emailContent.replaceAll(
+                    "href=['\"]([^'\"]*)['\"]",
+                    String.format("href='http://localhost:8080/api/tracking/click/%s$1'", trackingData)
+                );
+            }
+            
+            return emailContent;
+            
+        } catch (Exception e) {
+            log.error("Failed to add tracking to email: {}", e.getMessage());
+            return emailContent; // Return original content if tracking fails
+        }
+    }
+    
+    private boolean isValidEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        
+        // Basic email validation regex
+        String emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+        Pattern pattern = Pattern.compile(emailRegex);
+        return pattern.matcher(email.trim()).matches();
     }
 } 

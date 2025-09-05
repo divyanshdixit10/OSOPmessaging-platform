@@ -68,6 +68,7 @@ public class EmailEvent {
     private LocalDateTime createdAt;
     
     @Column(name = "processed")
+    @Builder.Default
     private Boolean processed = false;
     
     @Column(name = "processed_at")

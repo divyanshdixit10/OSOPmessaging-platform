@@ -54,21 +54,27 @@ public class Campaign {
     private Integer totalRecipients;
     
     @Column(name = "sent_count")
+    @Builder.Default
     private Integer sentCount = 0;
     
     @Column(name = "delivered_count")
+    @Builder.Default
     private Integer deliveredCount = 0;
     
     @Column(name = "opened_count")
+    @Builder.Default
     private Integer openedCount = 0;
     
     @Column(name = "clicked_count")
+    @Builder.Default
     private Integer clickedCount = 0;
     
     @Column(name = "bounced_count")
+    @Builder.Default
     private Integer bouncedCount = 0;
     
     @Column(name = "unsubscribed_count")
+    @Builder.Default
     private Integer unsubscribedCount = 0;
     
     @Column(name = "scheduled_at")
@@ -93,19 +99,24 @@ public class Campaign {
     
     // Tracking settings
     @Column(name = "track_opens")
+    @Builder.Default
     private Boolean trackOpens = true;
     
     @Column(name = "track_clicks")
+    @Builder.Default
     private Boolean trackClicks = true;
     
     @Column(name = "add_unsubscribe_link")
+    @Builder.Default
     private Boolean addUnsubscribeLink = true;
     
     // Campaign settings
     @Column(name = "is_draft")
+    @Builder.Default
     private Boolean isDraft = true;
     
     @Column(name = "is_test")
+    @Builder.Default
     private Boolean isTest = false;
     
     @Column(name = "test_emails", columnDefinition = "TEXT")
@@ -123,4 +134,15 @@ public class Campaign {
     
     @Column(name = "unsubscribe_rate")
     private Double unsubscribeRate;
+    
+    // Helper methods for analytics
+    public Double getOpenRate() {
+        if (sentCount == null || sentCount == 0) return 0.0;
+        return openedCount != null ? (openedCount.doubleValue() / sentCount.doubleValue()) * 100 : 0.0;
+    }
+    
+    public Double getClickRate() {
+        if (sentCount == null || sentCount == 0) return 0.0;
+        return clickedCount != null ? (clickedCount.doubleValue() / sentCount.doubleValue()) * 100 : 0.0;
+    }
 }

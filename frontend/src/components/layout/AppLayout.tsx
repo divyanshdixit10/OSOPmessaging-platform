@@ -37,6 +37,7 @@ import {
   FiChevronDown,
 } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { IconType } from 'react-icons';
 
 interface AppLayoutProps {
@@ -62,22 +63,23 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user, logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast({
+      title: 'Logged out successfully',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
   
   const sidebarBg = useColorModeValue('white', 'gray.800');
   const sidebarBorderColor = useColorModeValue('gray.200', 'gray.700');
   const headerBg = useColorModeValue('white', 'gray.800');
   const headerBorderColor = useColorModeValue('gray.200', 'gray.700');
-
-  const handleLogout = () => {
-    // Add logout logic here
-    toast({
-      title: 'Logged out',
-      description: 'You have been successfully logged out',
-      status: 'success',
-      duration: 3000,
-    });
-    navigate('/');
-  };
 
   const SidebarContent = () => (
     <VStack spacing={0} align="stretch" h="full">
@@ -132,13 +134,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       <Box p={4} borderTop="1px solid" borderColor={sidebarBorderColor}>
         <HStack spacing={3} p={3} borderRadius="lg" bg="gray.50">
-          <Avatar size="sm" name="User" src="" />
+          <Avatar size="sm" name={user?.firstName} src="" />
           <Box flex={1}>
             <Text fontSize="sm" fontWeight="medium" color="gray.700">
-              John Doe
+              {user?.firstName} {user?.lastName}
             </Text>
             <Text fontSize="xs" color="gray.500">
-              john@example.com
+              {user?.email}
             </Text>
           </Box>
         </HStack>

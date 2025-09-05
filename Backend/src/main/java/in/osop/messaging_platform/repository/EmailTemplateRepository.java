@@ -47,4 +47,15 @@ public interface EmailTemplateRepository extends JpaRepository<EmailTemplate, Lo
     
     @Query("SELECT COUNT(t) FROM EmailTemplate t WHERE t.isActive = true")
     long countActiveTemplates();
+    
+    // Additional methods for the service
+    long countByIsActiveTrue();
+    
+    long countByIsDefaultTrue();
+    
+    @Query("SELECT DISTINCT t.category FROM EmailTemplate t WHERE t.category IS NOT NULL")
+    List<String> findDistinctCategories();
+    
+    @Query("SELECT DISTINCT t.type FROM EmailTemplate t WHERE t.type IS NOT NULL")
+    List<String> findDistinctTypes();
 }

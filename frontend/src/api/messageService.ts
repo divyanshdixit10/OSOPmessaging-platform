@@ -3,18 +3,14 @@ import { AxiosError } from 'axios';
 import { MessageRequest, MessageResponse } from '../types/message';
 import { BulkEmailRequest } from '../types/EmailRequest';
 
-// Create axios instance with base configuration
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080',
-  headers: {
-    'Accept': 'application/json'
-  },
-  auth: {
-    username: 'admin',
-    password: 'admin123'
-  },
-  withCredentials: true
-});
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Accept': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
 
 export const sendMessage = async (data: MessageRequest): Promise<MessageResponse> => {
   // Validate required fields
@@ -55,6 +51,17 @@ export const sendMessage = async (data: MessageRequest): Promise<MessageResponse
     });
   }
 
+  // Append tracking options
+  if (data.trackOpens !== undefined) {
+    formData.append('trackOpens', data.trackOpens.toString());
+  }
+  if (data.trackClicks !== undefined) {
+    formData.append('trackClicks', data.trackClicks.toString());
+  }
+  if (data.addUnsubscribeLink !== undefined) {
+    formData.append('addUnsubscribeLink', data.addUnsubscribeLink.toString());
+  }
+
   try {
     console.log('Sending message:', {
       channel: data.channel,
@@ -70,12 +77,27 @@ export const sendMessage = async (data: MessageRequest): Promise<MessageResponse
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          ...getAuthHeaders()
         }
       }
     );
 
-    console.log('Message sent successfully:', response.data);
+    console.log('Message response:', response.data);
+    
+    // Check if the response indicates any failures
+    if (response.data.status === 'FAILED') {
+      const failedRecipients = Object.entries(response.data.details || {})
+        .filter(([_, status]) => status === 'FAILED')
+        .map(([email, _]) => email);
+      throw new Error(`Failed to send emails to: ${failedRecipients.join(', ')}`);
+    } else if (response.data.status === 'PARTIAL') {
+      const failedRecipients = Object.entries(response.data.details || {})
+        .filter(([_, status]) => status === 'FAILED')
+        .map(([email, _]) => email);
+      console.warn('Partial success - some emails failed:', failedRecipients);
+    }
+    
     return response.data;
 
   } catch (error) {
@@ -90,10 +112,27 @@ export const sendBulkEmail = async (formData: FormData): Promise<MessageResponse
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          ...getAuthHeaders()
         }
       }
     );
+    
+    console.log('Bulk email response:', response.data);
+    
+    // Check if the response indicates any failures
+    if (response.data.status === 'FAILED') {
+      const failedRecipients = Object.entries(response.data.details || {})
+        .filter(([_, status]) => status === 'FAILED')
+        .map(([email, _]) => email);
+      throw new Error(`Failed to send emails to: ${failedRecipients.join(', ')}`);
+    } else if (response.data.status === 'PARTIAL') {
+      const failedRecipients = Object.entries(response.data.details || {})
+        .filter(([_, status]) => status === 'FAILED')
+        .map(([email, _]) => email);
+      console.warn('Partial success - some emails failed:', failedRecipients);
+    }
+    
     return response.data;
   } catch (error) {
     if (error instanceof AxiosError) {

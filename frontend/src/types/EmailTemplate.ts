@@ -1,5 +1,5 @@
 export interface EmailTemplate {
-  id?: string;
+  id?: number;
   name: string;
   subject: string;
   body: string;
@@ -18,6 +18,12 @@ export interface EmailTemplateFormData {
   name: string;
   subject: string;
   body: string;
+  category?: string;
+  type?: string;
+  description?: string;
+  variables?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface TemplateVariable {

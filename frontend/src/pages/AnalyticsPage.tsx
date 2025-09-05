@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -52,7 +52,9 @@ import {
   FiEye,
   FiTarget,
   FiClock,
+  FiRefreshCw,
 } from 'react-icons/fi';
+import AnalyticsService, { OverviewMetrics } from '../api/analyticsService';
 
 interface MetricCardProps {
   title: string;
@@ -188,19 +190,48 @@ const getStatusColor = (status: string) => {
 export const AnalyticsPage: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
   const [selectedMetric, setSelectedMetric] = useState('overview');
+  const [overviewData, setOverviewData] = useState<OverviewMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      // Get real data from backend only
+      const data = await AnalyticsService.getOverviewMetrics({
+        startDate: selectedPeriod === '7d' ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : 
+                 selectedPeriod === '30d' ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() :
+                 new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date().toISOString()
+      });
+      setOverviewData(data);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching analytics data:', err);
+      setError('Failed to load analytics data from backend');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [selectedPeriod]);
 
   const overviewMetrics = [
     {
       title: 'Total Emails Sent',
-      value: '8,000',
+      value: overviewData?.totalEmailsSent?.toLocaleString() || '0',
       change: 15.2,
       icon: FiMail,
       color: 'blue',
-      description: 'This month',
+      description: selectedPeriod === '7d' ? 'This week' : selectedPeriod === '30d' ? 'This month' : 'This quarter',
     },
     {
       title: 'Open Rate',
-      value: '26.8%',
+      value: overviewData?.openRate ? `${overviewData.openRate.toFixed(1)}%` : '0%',
       change: 8.5,
       icon: FiEye,
       color: 'green',
@@ -208,15 +239,15 @@ export const AnalyticsPage: React.FC = () => {
     },
     {
       title: 'Click Rate',
-      value: '4.2%',
+      value: overviewData?.clickRate ? `${overviewData.clickRate.toFixed(1)}%` : '0%',
       change: 12.3,
-              icon: FiTarget,
+      icon: FiTarget,
       color: 'purple',
       description: 'Industry avg: 2.8%',
     },
     {
       title: 'Bounce Rate',
-      value: '2.1%',
+      value: overviewData?.bounceRate ? `${overviewData.bounceRate.toFixed(1)}%` : '0%',
       change: -5.2,
       icon: FiTrendingDown,
       color: 'orange',
@@ -259,12 +290,32 @@ export const AnalyticsPage: React.FC = () => {
     <VStack spacing={8} align="stretch">
       {/* Header */}
       <Box>
-        <Heading size="lg" color="gray.800" mb={2}>
-          Analytics & Performance
-        </Heading>
-        <Text color="gray.600">
-          Track your email campaign performance and gain insights to improve engagement.
-        </Text>
+        <HStack justify="space-between" align="flex-start" mb={2}>
+          <Box>
+            <Heading size="lg" color="gray.800" mb={2}>
+              Analytics & Performance
+            </Heading>
+            <Text color="gray.600">
+              Track your email campaign performance and gain insights to improve engagement.
+            </Text>
+          </Box>
+          <VStack spacing={2} align="flex-end">
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<Icon as={FiRefreshCw as any} />}
+              onClick={fetchAnalyticsData}
+              isLoading={loading}
+            >
+              Refresh
+            </Button>
+            {lastUpdated && (
+              <Text fontSize="xs" color="gray.500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </Text>
+            )}
+          </VStack>
+        </HStack>
       </Box>
 
       {/* Controls */}

@@ -8,6 +8,7 @@ public enum EmailEventType {
     BOUNCED,
     UNSUBSCRIBED,
     SPAM_COMPLAINT,
+    COMPLAINED,
     FORWARDED,
     PRINTED
 }

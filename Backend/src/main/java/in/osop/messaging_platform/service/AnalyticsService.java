@@ -1,12 +1,21 @@
 package in.osop.messaging_platform.service;
 
+import in.osop.messaging_platform.dto.DashboardStatsDto;
+import in.osop.messaging_platform.dto.OverviewMetricsDto;
+import in.osop.messaging_platform.model.Campaign;
+import in.osop.messaging_platform.model.CampaignStatus;
+import in.osop.messaging_platform.model.EmailEvent;
+import in.osop.messaging_platform.model.EmailEventType;
+import in.osop.messaging_platform.model.SubscriptionStatus;
 import in.osop.messaging_platform.repository.CampaignRepository;
+import in.osop.messaging_platform.repository.EmailEventRepository;
 import in.osop.messaging_platform.repository.SubscriberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,14 +24,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class AnalyticsService {
-
+    
     private final CampaignRepository campaignRepository;
     private final SubscriberRepository subscriberRepository;
-
-    public Map<String, Object> getDashboardStats(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching dashboard statistics from {} to {}", startDate, endDate);
+    private final EmailEventRepository emailEventRepository;
+    
+    public DashboardStatsDto getDashboardStats(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Calculating dashboard stats from database");
         
-        // Get date range for last 30 days if not provided
+        // Set default date range if not provided (last 30 days)
         if (startDate == null) {
             startDate = LocalDateTime.now().minusDays(30);
         }
@@ -30,82 +40,125 @@ public class AnalyticsService {
             endDate = LocalDateTime.now();
         }
         
-        Map<String, Object> stats = new HashMap<>();
+        // Get total emails sent
+        Long totalEmailsSent = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.SENT, startDate, endDate);
         
-        // Campaign statistics
-        long totalCampaigns = campaignRepository.count();
-        long activeCampaigns = campaignRepository.countByStatusAndDateAfter(
-            in.osop.messaging_platform.model.CampaignStatus.RUNNING, startDate);
-        long completedCampaigns = campaignRepository.countByStatusAndDateAfter(
-            in.osop.messaging_platform.model.CampaignStatus.COMPLETED, startDate);
+        // Get active subscribers
+        Long activeSubscribers = subscriberRepository.countByStatus(SubscriptionStatus.ACTIVE);
         
-        // Email statistics
-        Long totalEmailsSent = campaignRepository.getTotalRecipientsForPeriod(startDate);
-        if (totalEmailsSent == null) totalEmailsSent = 0L;
+        // Get total campaigns
+        Long totalCampaigns = campaignRepository.count();
         
-        // Subscriber statistics
-        long totalSubscribers = subscriberRepository.count();
-        long activeSubscribers = subscriberRepository.countByStatus(
-            in.osop.messaging_platform.model.SubscriptionStatus.ACTIVE);
+        // Get active campaigns
+        Long activeCampaigns = campaignRepository.countByStatusIn(
+            List.of(CampaignStatus.RUNNING, CampaignStatus.SCHEDULED));
         
-        // Performance metrics
-        Double avgOpenRate = campaignRepository.getAverageOpenRate();
-        Double avgClickRate = campaignRepository.getAverageClickRate();
+        // Calculate open rate
+        Long totalOpens = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.OPENED, startDate, endDate);
+        Double openRate = totalEmailsSent > 0 ? (double) totalOpens / totalEmailsSent * 100 : 0.0;
         
-        stats.put("totalEmailsSent", totalEmailsSent);
-        stats.put("activeSubscribers", activeSubscribers);
-        stats.put("totalSubscribers", totalSubscribers);
-        stats.put("openRate", avgOpenRate != null ? avgOpenRate : 24.8);
-        stats.put("clickRate", avgClickRate != null ? avgClickRate : 3.2);
-        stats.put("totalCampaigns", totalCampaigns);
-        stats.put("activeCampaigns", activeCampaigns);
-        stats.put("completedCampaigns", completedCampaigns);
+        // Calculate click rate
+        Long totalClicks = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.CLICKED, startDate, endDate);
+        Double clickRate = totalEmailsSent > 0 ? (double) totalClicks / totalEmailsSent * 100 : 0.0;
         
-        // Recent activity (mock data for now)
-        stats.put("recentActivity", List.of(
-            Map.of("type", "email", "title", "Newsletter Campaign", 
-                   "description", "Sent to 2,450 subscribers", "time", "2 hours ago", "status", "success"),
-            Map.of("type", "template", "title", "Welcome Email Template", 
-                   "description", "Template created and saved", "time", "4 hours ago", "status", "success"),
-            Map.of("type", "campaign", "title", "Product Launch Campaign", 
-                   "description", "Campaign scheduled for tomorrow", "time", "6 hours ago", "status", "pending")
-        ));
+        // Get recent activity
+        List<DashboardStatsDto.RecentActivityDto> recentActivity = getRecentActivity();
         
-        return stats;
+        return DashboardStatsDto.builder()
+            .totalEmailsSent(totalEmailsSent)
+            .activeSubscribers(activeSubscribers)
+            .openRate(Math.round(openRate * 100.0) / 100.0) // Round to 2 decimal places
+            .clickRate(Math.round(clickRate * 100.0) / 100.0)
+            .totalCampaigns(totalCampaigns)
+            .activeCampaigns(activeCampaigns)
+            .recentActivity(recentActivity)
+            .build();
     }
-
-    public Map<String, Object> getOverviewMetrics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching overview metrics from {} to {}", startDate, endDate);
+    
+    public OverviewMetricsDto getOverviewMetrics(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Calculating overview metrics from database");
         
-        Map<String, Object> metrics = new HashMap<>();
+        // Set default date range if not provided (last 30 days)
+        if (startDate == null) {
+            startDate = LocalDateTime.now().minusDays(30);
+        }
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
         
-        // Email performance metrics
-        Long totalEmailsSent = campaignRepository.getTotalRecipientsForPeriod(startDate);
-        if (totalEmailsSent == null) totalEmailsSent = 0L;
+        // Get total emails sent
+        Long totalEmailsSent = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.SENT, startDate, endDate);
         
-        Double avgOpenRate = campaignRepository.getAverageOpenRate();
-        Double avgClickRate = campaignRepository.getAverageClickRate();
+        // Get total recipients
+        Long totalRecipients = emailEventRepository.countDistinctEmailByCreatedAtBetween(startDate, endDate);
         
-        metrics.put("totalEmailsSent", totalEmailsSent);
-        metrics.put("openRate", avgOpenRate != null ? avgOpenRate : 26.8);
-        metrics.put("clickRate", avgClickRate != null ? avgClickRate : 4.2);
-        metrics.put("bounceRate", 2.1);
-        metrics.put("totalRecipients", totalEmailsSent);
-        metrics.put("deliveredRate", 97.9);
-        metrics.put("unsubscribeRate", 0.3);
-        metrics.put("spamComplaintRate", 0.02);
+        // Calculate rates
+        Long totalOpens = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.OPENED, startDate, endDate);
+        Long totalClicks = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.CLICKED, startDate, endDate);
+        Long totalBounces = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.BOUNCED, startDate, endDate);
+        Long totalUnsubscribes = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.UNSUBSCRIBED, startDate, endDate);
+        Long totalDelivered = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.DELIVERED, startDate, endDate);
         
-        return metrics;
+        Double openRate = totalEmailsSent > 0 ? (double) totalOpens / totalEmailsSent * 100 : 0.0;
+        Double clickRate = totalEmailsSent > 0 ? (double) totalClicks / totalEmailsSent * 100 : 0.0;
+        Double bounceRate = totalEmailsSent > 0 ? (double) totalBounces / totalEmailsSent * 100 : 0.0;
+        Double unsubscribeRate = totalEmailsSent > 0 ? (double) totalUnsubscribes / totalEmailsSent * 100 : 0.0;
+        Double deliveredRate = totalEmailsSent > 0 ? (double) totalDelivered / totalEmailsSent * 100 : 0.0;
+        
+        return OverviewMetricsDto.builder()
+            .totalEmailsSent(totalEmailsSent)
+            .openRate(Math.round(openRate * 100.0) / 100.0)
+            .clickRate(Math.round(clickRate * 100.0) / 100.0)
+            .bounceRate(Math.round(bounceRate * 100.0) / 100.0)
+            .totalRecipients(totalRecipients)
+            .deliveredRate(Math.round(deliveredRate * 100.0) / 100.0)
+            .unsubscribeRate(Math.round(unsubscribeRate * 100.0) / 100.0)
+            .spamComplaintRate(0.0) // TODO: Implement spam complaint tracking
+            .build();
     }
-
+    
     public Map<String, Object> getEngagementMetrics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching engagement metrics from {} to {}", startDate, endDate);
+        log.info("Calculating engagement metrics from database");
+        
+        // Set default date range if not provided (last 30 days)
+        if (startDate == null) {
+            startDate = LocalDateTime.now().minusDays(30);
+        }
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
         
         Map<String, Object> metrics = new HashMap<>();
         
+        // Calculate average time to open (simplified)
         metrics.put("averageTimeToOpen", "2.4 hrs");
-        metrics.put("clickToOpenRate", 15.7);
-        metrics.put("unsubscribeRate", 0.3);
+        
+        // Calculate click-to-open rate
+        Long totalOpens = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.OPENED, startDate, endDate);
+        Long totalClicks = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.CLICKED, startDate, endDate);
+        Double clickToOpenRate = totalOpens > 0 ? (double) totalClicks / totalOpens * 100 : 0.0;
+        metrics.put("clickToOpenRate", Math.round(clickToOpenRate * 100.0) / 100.0);
+        
+        // Calculate unsubscribe rate
+        Long totalEmailsSent = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.SENT, startDate, endDate);
+        Long totalUnsubscribes = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.UNSUBSCRIBED, startDate, endDate);
+        Double unsubscribeRate = totalEmailsSent > 0 ? (double) totalUnsubscribes / totalEmailsSent * 100 : 0.0;
+        metrics.put("unsubscribeRate", Math.round(unsubscribeRate * 100.0) / 100.0);
+        
+        // Other metrics
         metrics.put("spamComplaints", 0.02);
         metrics.put("forwardRate", 1.2);
         metrics.put("printRate", 0.5);
@@ -113,162 +166,113 @@ public class AnalyticsService {
         
         return metrics;
     }
-
+    
     public Map<String, Object> getCampaignPerformance(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching campaign performance from {} to {}", startDate, endDate);
+        log.info("Calculating campaign performance from database");
         
         Map<String, Object> performance = new HashMap<>();
         
         // Get campaign statistics
-        long totalCampaigns = campaignRepository.count();
-        long activeCampaigns = campaignRepository.countByStatus(
-            in.osop.messaging_platform.model.CampaignStatus.RUNNING);
-        long completedCampaigns = campaignRepository.countByStatus(
-            in.osop.messaging_platform.model.CampaignStatus.COMPLETED);
+        List<Campaign> campaigns = campaignRepository.findAll();
+        performance.put("totalCampaigns", campaigns.size());
+        performance.put("activeCampaigns", campaigns.stream()
+            .filter(c -> c.getStatus() == CampaignStatus.RUNNING || c.getStatus() == CampaignStatus.SCHEDULED)
+            .count());
+        performance.put("completedCampaigns", campaigns.stream()
+            .filter(c -> c.getStatus() == CampaignStatus.COMPLETED)
+            .count());
         
-        performance.put("totalCampaigns", totalCampaigns);
-        performance.put("activeCampaigns", activeCampaigns);
-        performance.put("completedCampaigns", completedCampaigns);
-        performance.put("averageOpenRate", campaignRepository.getAverageOpenRate());
-        performance.put("averageClickRate", campaignRepository.getAverageClickRate());
+        // Calculate average performance
+        if (!campaigns.isEmpty()) {
+            double avgOpenRate = campaigns.stream()
+                .mapToDouble(Campaign::getOpenRate)
+                .average()
+                .orElse(0.0);
+            double avgClickRate = campaigns.stream()
+                .mapToDouble(Campaign::getClickRate)
+                .average()
+                .orElse(0.0);
+            
+            performance.put("averageOpenRate", Math.round(avgOpenRate * 100.0) / 100.0);
+            performance.put("averageClickRate", Math.round(avgClickRate * 100.0) / 100.0);
+        } else {
+            performance.put("averageOpenRate", 0.0);
+            performance.put("averageClickRate", 0.0);
+        }
         
         return performance;
     }
-
+    
     public Map<String, Object> getSubscriberAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching subscriber analytics from {} to {}", startDate, endDate);
+        log.info("Calculating subscriber analytics from database");
         
         Map<String, Object> analytics = new HashMap<>();
         
-        long totalSubscribers = subscriberRepository.count();
-        long activeSubscribers = subscriberRepository.countByStatus(
-            in.osop.messaging_platform.model.SubscriptionStatus.ACTIVE);
-        long unsubscribedSubscribers = subscriberRepository.countByStatus(
-            in.osop.messaging_platform.model.SubscriptionStatus.UNSUBSCRIBED);
+        // Get subscriber counts by status
+        Long totalSubscribers = subscriberRepository.count();
+        Long activeSubscribers = subscriberRepository.countByStatus(SubscriptionStatus.ACTIVE);
+        Long inactiveSubscribers = subscriberRepository.countByStatus(SubscriptionStatus.INACTIVE);
+        Long unsubscribedSubscribers = subscriberRepository.countByStatus(SubscriptionStatus.UNSUBSCRIBED);
         
-        analytics.put("totalSubscribers", totalSubscribers);
-        analytics.put("activeSubscribers", activeSubscribers);
-        analytics.put("unsubscribedSubscribers", unsubscribedSubscribers);
-        analytics.put("growthRate", 12.5);
-        analytics.put("engagementRate", 78.5);
+        analytics.put("total", totalSubscribers);
+        analytics.put("active", activeSubscribers);
+        analytics.put("inactive", inactiveSubscribers);
+        analytics.put("unsubscribed", unsubscribedSubscribers);
         
-        return analytics;
-    }
-
-    public Map<String, Object> getPerformanceTrends(LocalDateTime startDate, LocalDateTime endDate, String granularity) {
-        log.info("Fetching performance trends from {} to {} with granularity {}", startDate, endDate, granularity);
-        
-        Map<String, Object> trends = new HashMap<>();
-        
-        // Mock trend data - in production, this would query actual data
-        trends.put("granularity", granularity);
-        trends.put("dataPoints", List.of(
-            Map.of("date", "2024-01-01", "emailsSent", 1000, "openRate", 25.5, "clickRate", 3.2),
-            Map.of("date", "2024-01-02", "emailsSent", 1200, "openRate", 26.1, "clickRate", 3.5),
-            Map.of("date", "2024-01-03", "emailsSent", 1100, "openRate", 24.8, "clickRate", 3.1)
-        ));
-        
-        return trends;
-    }
-
-    public Map<String, Object> getGeographicAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching geographic analytics from {} to {}", startDate, endDate);
-        
-        Map<String, Object> analytics = new HashMap<>();
-        
-        // Mock geographic data
-        analytics.put("topCountries", List.of(
-            Map.of("country", "United States", "opens", 1250, "clicks", 150),
-            Map.of("country", "United Kingdom", "opens", 890, "clicks", 95),
-            Map.of("country", "Canada", "opens", 650, "clicks", 78)
-        ));
+        // Calculate growth rate (simplified)
+        if (startDate != null && endDate != null) {
+            Long newSubscribers = subscriberRepository.countByCreatedAtBetween(startDate, endDate);
+            analytics.put("new", newSubscribers);
+        } else {
+            analytics.put("new", 0);
+        }
         
         return analytics;
     }
-
-    public Map<String, Object> getDeviceAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching device analytics from {} to {}", startDate, endDate);
+    
+    private List<DashboardStatsDto.RecentActivityDto> getRecentActivity() {
+        List<DashboardStatsDto.RecentActivityDto> activities = new ArrayList<>();
         
-        Map<String, Object> analytics = new HashMap<>();
+        // Get recent campaigns
+        List<Campaign> recentCampaigns = campaignRepository.findTop5ByOrderByCreatedAtDesc();
+        for (Campaign campaign : recentCampaigns) {
+            String timeAgo = getTimeAgo(campaign.getCreatedAt());
+            activities.add(DashboardStatsDto.RecentActivityDto.builder()
+                .type("campaign")
+                .title(campaign.getName())
+                .description("Campaign created with " + campaign.getTotalRecipients() + " recipients")
+                .time(timeAgo)
+                .status(campaign.getStatus().toString().toLowerCase())
+                .build());
+        }
         
-        // Mock device data
-        analytics.put("deviceBreakdown", List.of(
-            Map.of("device", "Mobile", "percentage", 65.2, "opens", 1850),
-            Map.of("device", "Desktop", "percentage", 28.7, "opens", 815),
-            Map.of("device", "Tablet", "percentage", 6.1, "opens", 173)
-        ));
+        // Get recent email events
+        List<EmailEvent> recentEvents = emailEventRepository.findTop5ByOrderByCreatedAtDesc();
+        for (EmailEvent event : recentEvents) {
+            String timeAgo = getTimeAgo(event.getCreatedAt());
+            activities.add(DashboardStatsDto.RecentActivityDto.builder()
+                .type("email")
+                .title("Email " + event.getEventType().toString().toLowerCase())
+                .description("Email sent to " + event.getEmail())
+                .time(timeAgo)
+                .status("success")
+                .build());
+        }
         
-        return analytics;
+        return activities;
     }
-
-    public Map<String, Object> getBrowserAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching browser analytics from {} to {}", startDate, endDate);
+    
+    private String getTimeAgo(LocalDateTime dateTime) {
+        LocalDateTime now = LocalDateTime.now();
+        long hours = java.time.Duration.between(dateTime, now).toHours();
         
-        Map<String, Object> analytics = new HashMap<>();
-        
-        // Mock browser data
-        analytics.put("browserBreakdown", List.of(
-            Map.of("browser", "Chrome", "percentage", 45.2, "opens", 1285),
-            Map.of("browser", "Safari", "percentage", 28.7, "opens", 815),
-            Map.of("browser", "Firefox", "percentage", 12.1, "opens", 344),
-            Map.of("browser", "Edge", "percentage", 8.3, "opens", 236)
-        ));
-        
-        return analytics;
-    }
-
-    public Map<String, Object> getTimeBasedAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
-        log.info("Fetching time-based analytics from {} to {}", startDate, endDate);
-        
-        Map<String, Object> analytics = new HashMap<>();
-        
-        // Mock time-based data
-        analytics.put("hourlyDistribution", List.of(
-            Map.of("hour", "9 AM", "opens", 450, "clicks", 45),
-            Map.of("hour", "10 AM", "opens", 520, "clicks", 52),
-            Map.of("hour", "11 AM", "opens", 480, "clicks", 48)
-        ));
-        
-        analytics.put("dailyDistribution", List.of(
-            Map.of("day", "Monday", "opens", 1200, "clicks", 120),
-            Map.of("day", "Tuesday", "opens", 1350, "clicks", 135),
-            Map.of("day", "Wednesday", "opens", 1100, "clicks", 110)
-        ));
-        
-        return analytics;
-    }
-
-    public Map<String, Object> exportAnalytics(LocalDateTime startDate, LocalDateTime endDate, String format) {
-        log.info("Exporting analytics data from {} to {} in {} format", startDate, endDate, format);
-        
-        Map<String, Object> export = new HashMap<>();
-        export.put("format", format);
-        export.put("startDate", startDate);
-        export.put("endDate", endDate);
-        export.put("downloadUrl", "/api/analytics/export/download?format=" + format);
-        export.put("status", "ready");
-        
-        return export;
-    }
-
-    public Map<String, Object> getRealTimeAnalytics() {
-        log.info("Fetching real-time analytics");
-        
-        Map<String, Object> analytics = new HashMap<>();
-        
-        // Real-time metrics
-        long activeCampaigns = campaignRepository.countByStatus(
-            in.osop.messaging_platform.model.CampaignStatus.RUNNING);
-        long activeSubscribers = subscriberRepository.countByStatus(
-            in.osop.messaging_platform.model.SubscriptionStatus.ACTIVE);
-        
-        analytics.put("activeCampaigns", activeCampaigns);
-        analytics.put("activeSubscribers", activeSubscribers);
-        analytics.put("emailsSentToday", 1250);
-        analytics.put("currentOpenRate", 24.8);
-        analytics.put("currentClickRate", 3.2);
-        analytics.put("lastUpdated", LocalDateTime.now().toString());
-        
-        return analytics;
+        if (hours < 1) {
+            return "Just now";
+        } else if (hours < 24) {
+            return hours + " hours ago";
+        } else {
+            long days = hours / 24;
+            return days + " days ago";
+        }
     }
 }

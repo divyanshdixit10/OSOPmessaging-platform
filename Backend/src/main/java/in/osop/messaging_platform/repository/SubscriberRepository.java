@@ -67,4 +67,14 @@ public interface SubscriberRepository extends JpaRepository<Subscriber, Long> {
     
     @Query("SELECT DISTINCT s.source FROM Subscriber s WHERE s.source IS NOT NULL")
     List<String> findAllSources();
+    
+    // Additional methods for analytics
+    @Query("SELECT COUNT(s) FROM Subscriber s WHERE s.createdAt >= :date")
+    long countByCreatedAtAfter(@Param("date") LocalDateTime date);
+    
+    @Query("SELECT COUNT(s) FROM Subscriber s WHERE s.optedOutAt >= :date")
+    long countByOptedOutAtAfter(@Param("date") LocalDateTime date);
+    
+    // Count subscribers by date range
+    long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 }

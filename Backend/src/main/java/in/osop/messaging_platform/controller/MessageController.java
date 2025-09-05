@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import in.osop.messaging_platform.dto.MessageRequest;
 import in.osop.messaging_platform.dto.MessageResponse;
 import in.osop.messaging_platform.model.MessageChannel;
+import in.osop.messaging_platform.model.EmailEventType;
 import in.osop.messaging_platform.service.MessageService;
+import in.osop.messaging_platform.service.EmailTrackingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,6 +33,7 @@ import java.util.List;
 public class MessageController {
 
     private final MessageService messageService;
+    private final EmailTrackingService emailTrackingService;
     private final ObjectMapper objectMapper;
     
     @PostMapping("/send")
@@ -124,6 +127,90 @@ public class MessageController {
         } catch (Exception e) {
             log.error("Failed to parse request data: {}", e.getMessage());
             throw new RuntimeException("Failed to process bulk email request: " + e.getMessage());
+        }
+    }
+
+    // Email Tracking Endpoints
+    @GetMapping("/track/open/{campaignId}")
+    @Operation(summary = "Track email open", description = "Track when an email is opened")
+    public ResponseEntity<String> trackEmailOpen(
+            @PathVariable Long campaignId,
+            @RequestParam String email,
+            @RequestParam(required = false) String ip,
+            @RequestParam(required = false) String userAgent) {
+        try {
+            log.info("Tracking email open for campaign {} and email {}", campaignId, email);
+            emailTrackingService.trackEmailOpened(campaignId, email, ip, userAgent);
+            return ResponseEntity.ok("Email open tracked successfully");
+        } catch (Exception e) {
+            log.error("Error tracking email open: {}", e.getMessage());
+            return ResponseEntity.ok("Tracking failed but continuing"); // Return 200 to avoid breaking email
+        }
+    }
+
+    @GetMapping("/track/click/{campaignId}")
+    @Operation(summary = "Track email click", description = "Track when a link in an email is clicked")
+    public ResponseEntity<String> trackEmailClick(
+            @PathVariable Long campaignId,
+            @RequestParam String email,
+            @RequestParam(required = false) String link,
+            @RequestParam(required = false) String ip,
+            @RequestParam(required = false) String userAgent) {
+        try {
+            log.info("Tracking email click for campaign {} and email {}", campaignId, email);
+            emailTrackingService.trackEmailClicked(campaignId, email, link, ip, userAgent);
+            return ResponseEntity.ok("Email click tracked successfully");
+        } catch (Exception e) {
+            log.error("Error tracking email click: {}", e.getMessage());
+            return ResponseEntity.ok("Tracking failed but continuing");
+        }
+    }
+
+    @PostMapping("/track/delivered/{campaignId}")
+    @Operation(summary = "Track email delivered", description = "Track when an email is delivered")
+    public ResponseEntity<String> trackEmailDelivered(
+            @PathVariable Long campaignId,
+            @RequestParam String email) {
+        try {
+            log.info("Tracking email delivered for campaign {} and email {}", campaignId, email);
+            emailTrackingService.trackEmailDelivered(campaignId, email);
+            return ResponseEntity.ok("Email delivered tracked successfully");
+        } catch (Exception e) {
+            log.error("Error tracking email delivered: {}", e.getMessage());
+            return ResponseEntity.ok("Tracking failed but continuing");
+        }
+    }
+
+    @PostMapping("/track/bounced/{campaignId}")
+    @Operation(summary = "Track email bounced", description = "Track when an email bounces")
+    public ResponseEntity<String> trackEmailBounced(
+            @PathVariable Long campaignId,
+            @RequestParam String email,
+            @RequestParam(required = false) String reason) {
+        try {
+            log.info("Tracking email bounced for campaign {} and email {}", campaignId, email);
+            emailTrackingService.trackEmailBounced(campaignId, email, reason);
+            return ResponseEntity.ok("Email bounced tracked successfully");
+        } catch (Exception e) {
+            log.error("Error tracking email bounced: {}", e.getMessage());
+            return ResponseEntity.ok("Tracking failed but continuing");
+        }
+    }
+
+    @PostMapping("/track/unsubscribed/{campaignId}")
+    @Operation(summary = "Track email unsubscribed", description = "Track when a user unsubscribes")
+    public ResponseEntity<String> trackEmailUnsubscribed(
+            @PathVariable Long campaignId,
+            @RequestParam String email,
+            @RequestParam(required = false) String ip,
+            @RequestParam(required = false) String userAgent) {
+        try {
+            log.info("Tracking email unsubscribed for campaign {} and email {}", campaignId, email);
+            emailTrackingService.trackEmailUnsubscribed(campaignId, email, ip, userAgent);
+            return ResponseEntity.ok("Email unsubscribed tracked successfully");
+        } catch (Exception e) {
+            log.error("Error tracking email unsubscribed: {}", e.getMessage());
+            return ResponseEntity.ok("Tracking failed but continuing");
         }
     }
 } 

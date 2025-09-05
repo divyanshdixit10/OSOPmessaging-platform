@@ -12,6 +12,8 @@ import {
   useToast,
   FormErrorMessage,
   Text,
+  Checkbox,
+  HStack,
 } from '@chakra-ui/react';
 import { MessageChannel, MessageRequest } from '../types/message';
 import ChannelSelector from './ChannelSelector';
@@ -24,6 +26,9 @@ interface FormValues {
   subject: string;
   message: string;
   mediaUrls: string;
+  trackOpens: boolean;
+  trackClicks: boolean;
+  addUnsubscribeLink: boolean;
 }
 
 const validationSchema = Yup.object().shape({
@@ -65,6 +70,9 @@ const MessageForm: React.FC = () => {
       subject: '',
       message: '',
       mediaUrls: '',
+      trackOpens: true,
+      trackClicks: true,
+      addUnsubscribeLink: true,
     },
     validationSchema,
     onSubmit: async (values: FormValues) => {
@@ -76,6 +84,9 @@ const MessageForm: React.FC = () => {
           message: values.message,
           attachments: files,
           mediaUrls: values.mediaUrls ? values.mediaUrls.split(',').map((url: string) => url.trim()) : undefined,
+          trackOpens: values.trackOpens,
+          trackClicks: values.trackClicks,
+          addUnsubscribeLink: values.addUnsubscribeLink,
         };
 
         if (values.channel === 'EMAIL') {
@@ -185,6 +196,35 @@ const MessageForm: React.FC = () => {
             onChange={formik.handleChange}
           />
         </FormControl>
+
+        {formik.values.channel === 'EMAIL' && (
+          <FormControl>
+            <FormLabel>Email Tracking Options</FormLabel>
+            <VStack align="start" spacing={2}>
+              <Checkbox
+                name="trackOpens"
+                isChecked={formik.values.trackOpens}
+                onChange={formik.handleChange}
+              >
+                Track email opens
+              </Checkbox>
+              <Checkbox
+                name="trackClicks"
+                isChecked={formik.values.trackClicks}
+                onChange={formik.handleChange}
+              >
+                Track link clicks
+              </Checkbox>
+              <Checkbox
+                name="addUnsubscribeLink"
+                isChecked={formik.values.addUnsubscribeLink}
+                onChange={formik.handleChange}
+              >
+                Add unsubscribe link
+              </Checkbox>
+            </VStack>
+          </FormControl>
+        )}
 
         <Button
           type="submit"

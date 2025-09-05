@@ -7,13 +7,17 @@ export interface MessageRequest {
   message: string;
   mediaUrls?: string[];
   attachments?: File[];
+  trackOpens?: boolean;
+  trackClicks?: boolean;
+  addUnsubscribeLink?: boolean;
 }
 
 export interface MessageResponse {
-  messageId: string;
   status: string;
-  message: string;
-  timestamp: string;
+  channel: MessageChannel;
+  recipients: string[];
+  details: { [email: string]: 'SENT' | 'FAILED' | 'PENDING' | 'DELIVERED' };
+  errorMessage?: string;
 }
 
 export interface MessageHistory {

@@ -183,7 +183,7 @@ export const TemplatesPage: React.FC = () => {
   const loadTemplates = async () => {
     setIsLoading(true);
     try {
-      const response = await TemplateService.getTemplatesWithFallback();
+      const response = await TemplateService.getTemplates();
       setTemplates(response.content);
     } catch (error) {
       toast({
@@ -218,7 +218,7 @@ export const TemplatesPage: React.FC = () => {
 
   const handleCreateTemplate = () => {
     setEditingTemplate({
-      id: '',
+      id: undefined,
       name: '',
       subject: '',
       body: '',
@@ -241,7 +241,7 @@ export const TemplatesPage: React.FC = () => {
   const handleDuplicateTemplate = (template: EmailTemplate) => {
     const duplicatedTemplate: EmailTemplate = {
       ...template,
-      id: '',
+      id: undefined,
       name: `${template.name} (Copy)`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -254,7 +254,7 @@ export const TemplatesPage: React.FC = () => {
   const handleDeleteTemplate = async (template: EmailTemplate) => {
     if (window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
       try {
-        await TemplateService.deleteTemplate(template.id || '');
+        await TemplateService.deleteTemplate(template.id!);
         await loadTemplates();
         toast({
           title: 'Template deleted',
@@ -277,7 +277,18 @@ export const TemplatesPage: React.FC = () => {
     if (!editingTemplate) return;
 
     try {
-      const savedTemplate = await TemplateService.createTemplate(editingTemplate);
+      const templateData = {
+        name: editingTemplate.name,
+        subject: editingTemplate.subject,
+        body: editingTemplate.body,
+        category: editingTemplate.category,
+        type: editingTemplate.type,
+        description: editingTemplate.description,
+        variables: editingTemplate.variables,
+        isActive: editingTemplate.isActive,
+        isDefault: editingTemplate.isDefault
+      };
+      const savedTemplate = await TemplateService.createTemplate(templateData);
       await loadTemplates();
       onClose();
       toast({

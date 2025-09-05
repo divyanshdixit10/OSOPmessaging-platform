@@ -47,7 +47,7 @@ import { TemplateSelector } from '../components/TemplateSelector';
 import { BulkEmailRequest, Recipient } from '../types/EmailRequest';
 import { EmailTemplate } from '../types/EmailTemplate';
 import { sendBulkEmail } from '../api/messageService';
-import TemplateService from '../api/templateService';
+import { TemplateService } from '../api/templateService';
 import FileUploader from '../components/FileUploader';
 
 const SendEmailPage: React.FC = () => {
@@ -69,7 +69,7 @@ const SendEmailPage: React.FC = () => {
 
   const loadTemplates = async () => {
     try {
-      const response = await TemplateService.getTemplatesWithFallback();
+      const response = await TemplateService.getTemplates();
       setTemplates(response.content);
     } catch (error) {
       toast({
@@ -134,7 +134,7 @@ const SendEmailPage: React.FC = () => {
     try {
       // Create FormData for multipart/form-data
       const formData = new FormData();
-      formData.append('templateId', selectedTemplate.id || '');
+      formData.append('templateId', selectedTemplate.id?.toString() || '');
       formData.append('subject', selectedTemplate.subject);
       formData.append('body', selectedTemplate.body);
       
@@ -156,16 +156,35 @@ const SendEmailPage: React.FC = () => {
       formData.append('trackClicks', String(trackClicks));
       formData.append('addUnsubscribeLink', String(addUnsubscribeLink));
 
-      await sendBulkEmail(formData);
+      const response = await sendBulkEmail(formData);
       
       setCampaignProgress(100);
       
-      toast({
-        title: 'Success',
-        description: `Email campaign sent successfully to ${recipients.length} recipients`,
-        status: 'success',
-        duration: 5000,
-      });
+      // Handle different response statuses
+      if (response.status === 'SUCCESS') {
+        toast({
+          title: 'Success',
+          description: `Email campaign sent successfully to ${recipients.length} recipients`,
+          status: 'success',
+          duration: 5000,
+        });
+      } else if (response.status === 'PARTIAL') {
+        const failedCount = Object.values(response.details || {}).filter(status => status === 'FAILED').length;
+        const successCount = recipients.length - failedCount;
+        toast({
+          title: 'Partial Success',
+          description: `Emails sent to ${successCount} recipients, ${failedCount} failed`,
+          status: 'warning',
+          duration: 7000,
+        });
+      } else {
+        toast({
+          title: 'Failed',
+          description: 'Failed to send emails to any recipients',
+          status: 'error',
+          duration: 5000,
+        });
+      }
 
       // Reset form after delay
       setTimeout(() => {

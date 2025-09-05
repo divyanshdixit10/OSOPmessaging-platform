@@ -1,9 +1,47 @@
 const API_BASE_URL = 'http://localhost:8080/api';
 
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
 export interface AnalyticsFilters {
   startDate?: string;
   endDate?: string;
   granularity?: string;
+  campaignId?: string;
+  subscriberId?: string;
+}
+
+export interface DashboardStats {
+  totalEmailsSent: number;
+  activeSubscribers: number;
+  openRate: number;
+  clickRate: number;
+  totalCampaigns: number;
+  activeCampaigns: number;
+  recentActivity: Array<{
+    type: string;
+    title: string;
+    description: string;
+    time: string;
+    status: string;
+  }>;
+}
+
+export interface OverviewMetrics {
+  totalEmailsSent: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  totalRecipients: number;
+  deliveredRate: number;
+  unsubscribeRate: number;
+  spamComplaintRate: number;
 }
 
 export class AnalyticsService {
@@ -15,22 +53,26 @@ export class AnalyticsService {
     return response.json();
   }
 
-  static async getDashboardStats(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
+  static async getDashboardStats(filters: AnalyticsFilters = {}): Promise<DashboardStats> {
     const params = new URLSearchParams();
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/analytics/dashboard?${params.toString()}`);
-    return this.handleResponse<Record<string, any>>(response);
+    const response = await fetch(`${API_BASE_URL}/analytics/dashboard?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
+    return this.handleResponse<DashboardStats>(response);
   }
 
-  static async getOverviewMetrics(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
+  static async getOverviewMetrics(filters: AnalyticsFilters = {}): Promise<OverviewMetrics> {
     const params = new URLSearchParams();
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/analytics/overview?${params.toString()}`);
-    return this.handleResponse<Record<string, any>>(response);
+    const response = await fetch(`${API_BASE_URL}/analytics/overview?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
+    return this.handleResponse<OverviewMetrics>(response);
   }
 
   static async getEngagementMetrics(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
@@ -38,7 +80,9 @@ export class AnalyticsService {
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/analytics/engagement?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/analytics/engagement?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
     return this.handleResponse<Record<string, any>>(response);
   }
 
@@ -47,7 +91,9 @@ export class AnalyticsService {
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/analytics/campaigns?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/analytics/campaigns?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
     return this.handleResponse<Record<string, any>>(response);
   }
 
@@ -56,7 +102,9 @@ export class AnalyticsService {
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
 
-    const response = await fetch(`${API_BASE_URL}/analytics/subscribers?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}/analytics/subscribers?${params.toString()}`, {
+      headers: getAuthHeaders()
+    });
     return this.handleResponse<Record<string, any>>(response);
   }
 
@@ -121,74 +169,36 @@ export class AnalyticsService {
     return this.handleResponse<Record<string, any>>(response);
   }
 
-  // Fallback mock data for development when API is not available
-  private static getMockDashboardStats(): Record<string, any> {
-    return {
-      totalEmailsSent: 12470,
-      activeSubscribers: 8234,
-      openRate: 24.8,
-      clickRate: 3.2,
-      totalCampaigns: 45,
-      activeCampaigns: 3,
-      recentActivity: [
-        { type: 'email', title: 'Newsletter Campaign', description: 'Sent to 2,450 subscribers', time: '2 hours ago', status: 'success' },
-        { type: 'template', title: 'Welcome Email Template', description: 'Template created and saved', time: '4 hours ago', status: 'success' },
-        { type: 'campaign', title: 'Product Launch Campaign', description: 'Campaign scheduled for tomorrow', time: '6 hours ago', status: 'pending' }
-      ]
-    };
+
+  // Real backend data only - no fallbacks
+  static async getDashboardStatsReal(filters: AnalyticsFilters = {}): Promise<DashboardStats> {
+    return await this.getDashboardStats(filters);
   }
 
-  private static getMockOverviewMetrics(): Record<string, any> {
-    return {
-      totalEmailsSent: 8000,
-      openRate: 26.8,
-      clickRate: 4.2,
-      bounceRate: 2.1,
-      totalRecipients: 10000,
-      deliveredRate: 97.9,
-      unsubscribeRate: 0.3,
-      spamComplaintRate: 0.02
-    };
+  static async getOverviewMetricsReal(filters: AnalyticsFilters = {}): Promise<OverviewMetrics> {
+    return await this.getOverviewMetrics(filters);
   }
 
-  private static getMockEngagementMetrics(): Record<string, any> {
-    return {
-      averageTimeToOpen: '2.4 hrs',
-      clickToOpenRate: 15.7,
-      unsubscribeRate: 0.3,
-      spamComplaints: 0.02,
-      forwardRate: 1.2,
-      printRate: 0.5,
-      engagementScore: 78.5
-    };
+  static async getEngagementMetricsReal(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
+    return await this.getEngagementMetrics(filters);
   }
 
-  // Enhanced error handling with fallback to mock data
-  static async getDashboardStatsWithFallback(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
-    try {
-      return await this.getDashboardStats(filters);
-    } catch (error) {
-      console.warn('API call failed, using mock data:', error);
-      return this.getMockDashboardStats();
-    }
+  // Real-time data fetching - backend only
+  static async getRealTimeDashboardStats(filters: AnalyticsFilters = {}): Promise<DashboardStats> {
+    const response = await fetch(`${API_BASE_URL}/analytics/realtime/dashboard?${new URLSearchParams(filters as any).toString()}`);
+    return this.handleResponse<DashboardStats>(response);
   }
 
-  static async getOverviewMetricsWithFallback(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
-    try {
-      return await this.getOverviewMetrics(filters);
-    } catch (error) {
-      console.warn('API call failed, using mock data:', error);
-      return this.getMockOverviewMetrics();
-    }
+  // Live campaign tracking - backend only
+  static async getLiveCampaignStats(campaignId: string): Promise<Record<string, any>> {
+    const response = await fetch(`${API_BASE_URL}/analytics/campaigns/${campaignId}/live`);
+    return this.handleResponse<Record<string, any>>(response);
   }
 
-  static async getEngagementMetricsWithFallback(filters: AnalyticsFilters = {}): Promise<Record<string, any>> {
-    try {
-      return await this.getEngagementMetrics(filters);
-    } catch (error) {
-      console.warn('API call failed, using mock data:', error);
-      return this.getMockEngagementMetrics();
-    }
+  // Live subscriber tracking - backend only
+  static async getLiveSubscriberStats(): Promise<Record<string, any>> {
+    const response = await fetch(`${API_BASE_URL}/analytics/subscribers/live`);
+    return this.handleResponse<Record<string, any>>(response);
   }
 }
 

@@ -35,9 +35,13 @@ import {
   FiCheckCircle,
   FiAlertCircle,
   FiSend,
+  FiRefreshCw,
+  FiWifi,
+  FiWifiOff,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import AnalyticsService from '../api/analyticsService';
+import AnalyticsService, { DashboardStats } from '../api/analyticsService';
+import { WebSocketService, RealTimeAnalyticsService } from '../api/realtimeService';
 
 interface StatCardProps {
   title: string;
@@ -134,27 +138,96 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ type, title, descriptio
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const cardBg = useColorModeValue('white', 'gray.800');
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isLive, setIsLive] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [realTimeStats, setRealTimeStats] = useState<any>(null);
+
+  const fetchDashboardData = async (useRealTime = true) => {
+    try {
+      setLoading(true);
+      // Get real data from backend only
+      const data = await AnalyticsService.getDashboardStats();
+      setDashboardData(data);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data from backend');
+      // Set empty data structure
+      setDashboardData({
+        totalEmailsSent: 0,
+        activeSubscribers: 0,
+        openRate: 0,
+        clickRate: 0,
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        recentActivity: []
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const data = await AnalyticsService.getDashboardStatsWithFallback();
-        setDashboardData(data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
+    fetchDashboardData(isLive);
+    
+    // Set up auto-refresh every 30 seconds for live data
+    const interval = setInterval(() => {
+      if (isLive) {
+        fetchDashboardData(true);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isLive]);
+
+  // WebSocket real-time updates
+  useEffect(() => {
+    const handleConnected = () => {
+      setIsConnected(true);
+      console.log('WebSocket connected');
+    };
+
+    const handleDisconnected = () => {
+      setIsConnected(false);
+      console.log('WebSocket disconnected');
+    };
+
+    const handleAnalyticsUpdate = (data: any) => {
+      console.log('Received analytics update:', data);
+      setRealTimeStats(data);
+      setLastUpdated(new Date());
+    };
+
+    const handleEmailUpdate = (data: any) => {
+      console.log('Received email update:', data);
+      // Refresh dashboard data when email events occur
+      if (isLive) {
+        fetchDashboardData(true);
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    // Subscribe to WebSocket events
+    WebSocketService.subscribe('connected', handleConnected);
+    WebSocketService.subscribe('disconnected', handleDisconnected);
+    WebSocketService.subscribe('analytics_update', handleAnalyticsUpdate);
+    WebSocketService.subscribe('email_update', handleEmailUpdate);
+
+    // Subscribe to dashboard updates
+    WebSocketService.subscribeToDashboardUpdates();
+
+    // Cleanup on unmount
+    return () => {
+      WebSocketService.unsubscribe('connected', handleConnected);
+      WebSocketService.unsubscribe('disconnected', handleDisconnected);
+      WebSocketService.unsubscribe('analytics_update', handleAnalyticsUpdate);
+      WebSocketService.unsubscribe('email_update', handleEmailUpdate);
+    };
+  }, [isLive]);
 
   const stats = [
     {
@@ -204,28 +277,65 @@ export const DashboardPage: React.FC = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Alert status="error" borderRadius="lg">
-        <AlertIcon />
-        <Box>
-          <Text fontWeight="bold">Error loading dashboard</Text>
-          <Text fontSize="sm">{error}</Text>
-        </Box>
-      </Alert>
-    );
-  }
+  // Remove error handling for now to ensure dashboard always shows
+  // if (error) {
+  //   return (
+  //     <Alert status="error" borderRadius="lg">
+  //       <AlertIcon />
+  //       <Box>
+  //         <Text fontWeight="bold">Error loading dashboard</Text>
+  //         <Text fontSize="sm">{error}</Text>
+  //       </Box>
+  //     </Alert>
+  //   );
+  // }
 
   return (
     <VStack spacing={8} align="stretch">
       {/* Header */}
       <Box>
-        <Heading size="lg" color="gray.800" mb={2}>
-          Dashboard
-        </Heading>
-        <Text color="gray.600">
-          Welcome back! Here's what's happening with your messaging platform.
-        </Text>
+        <HStack justify="space-between" align="flex-start" mb={2}>
+          <Box>
+            <Heading size="lg" color="gray.800" mb={2}>
+              Dashboard
+            </Heading>
+            <Text color="gray.600">
+              Welcome back! Here's what's happening with your messaging platform.
+            </Text>
+            {error && (
+              <Text color="red.500" fontSize="sm" mt={2}>
+                Note: {error}
+              </Text>
+            )}
+          </Box>
+          <VStack spacing={2} align="flex-end">
+            <HStack spacing={2}>
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<Icon as={isConnected ? FiWifi : FiWifiOff as any} />}
+                colorScheme={isConnected ? "green" : "red"}
+                onClick={() => setIsLive(!isLive)}
+              >
+                {isConnected ? 'Live' : 'Offline'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<Icon as={FiRefreshCw as any} />}
+                onClick={() => fetchDashboardData(isLive)}
+                isLoading={loading}
+              >
+                Refresh
+              </Button>
+            </HStack>
+            {lastUpdated && (
+              <Text fontSize="xs" color="gray.500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </Text>
+            )}
+          </VStack>
+        </HStack>
       </Box>
 
       {/* Quick Actions */}
