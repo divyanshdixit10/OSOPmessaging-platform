@@ -42,6 +42,13 @@ public class Campaign {
     @Column(name = "template_id", insertable = false, updatable = false)
     private Long templateId;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+    
+    @Column(name = "tenant_id", insertable = false, updatable = false)
+    private Long tenantId;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CampaignStatus status;

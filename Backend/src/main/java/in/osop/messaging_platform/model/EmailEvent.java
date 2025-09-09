@@ -35,6 +35,13 @@ public class EmailEvent {
     @Column(name = "subscriber_id", insertable = false, updatable = false)
     private Long subscriberId;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+    
+    @Column(name = "tenant_id", insertable = false, updatable = false)
+    private Long tenantId;
+    
     @Column(nullable = false)
     private String email;
     
