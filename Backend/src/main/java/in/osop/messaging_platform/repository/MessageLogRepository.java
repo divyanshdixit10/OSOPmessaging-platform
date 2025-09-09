@@ -19,4 +19,9 @@ public interface MessageLogRepository extends JpaRepository<MessageLog, Long> {
     List<MessageLog> findByRecipient(String recipient);
     
     List<MessageLog> findByTimestampBetween(LocalDateTime start, LocalDateTime end);
+    
+    // Campaign-related methods
+    List<MessageLog> findByCampaignIdOrderByTimestampDesc(Long campaignId);
+    
+    List<MessageLog> findByCampaignIdAndStatusAndRetryCountLessThan(Long campaignId, MessageStatus status, int maxRetries);
 } 

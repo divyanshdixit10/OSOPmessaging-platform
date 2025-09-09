@@ -184,7 +184,34 @@ export const TemplatesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await TemplateService.getTemplates();
-      setTemplates(response.content);
+      // Convert Template[] to EmailTemplate[]
+      const convertedTemplates: EmailTemplate[] = response.content.map(template => ({
+        id: template.id,
+        name: template.name,
+        subject: template.subject,
+        body: template.contentHtml, // Map contentHtml to body
+        contentHtml: template.contentHtml,
+        contentText: template.contentText,
+        category: template.category,
+        type: template.type,
+        createdBy: template.createdBy,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
+        isDefault: template.isDefault,
+        isActive: template.isActive,
+        isPublic: template.isPublic,
+        description: template.description,
+        variables: template.variables,
+        version: template.version,
+        parentTemplateId: template.parentTemplateId,
+        usageCount: template.usageCount,
+        lastUsedAt: template.lastUsedAt,
+        tags: template.tags,
+        cssStyles: template.cssStyles,
+        metadata: template.metadata,
+        thumbnailUrl: template.thumbnailUrl,
+      }));
+      setTemplates(convertedTemplates);
     } catch (error) {
       toast({
         title: 'Error loading templates',
@@ -280,13 +307,17 @@ export const TemplatesPage: React.FC = () => {
       const templateData = {
         name: editingTemplate.name,
         subject: editingTemplate.subject,
-        body: editingTemplate.body,
-        category: editingTemplate.category,
-        type: editingTemplate.type,
+        contentHtml: editingTemplate.body,
+        contentText: editingTemplate.contentText,
+        category: editingTemplate.category || 'CUSTOM',
+        type: editingTemplate.type || 'HTML',
         description: editingTemplate.description,
         variables: editingTemplate.variables,
-        isActive: editingTemplate.isActive,
-        isDefault: editingTemplate.isDefault
+        isActive: editingTemplate.isActive !== false,
+        isDefault: editingTemplate.isDefault || false,
+        isPublic: editingTemplate.isPublic || false,
+        cssStyles: editingTemplate.cssStyles,
+        tags: editingTemplate.tags,
       };
       const savedTemplate = await TemplateService.createTemplate(templateData);
       await loadTemplates();

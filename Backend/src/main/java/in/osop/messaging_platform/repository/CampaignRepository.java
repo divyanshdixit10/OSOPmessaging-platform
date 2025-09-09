@@ -65,4 +65,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     
     // Find top recent campaigns
     List<Campaign> findTop5ByOrderByCreatedAtDesc();
+    
+    // Find campaign by name
+    List<Campaign> findByName(String name);
 }

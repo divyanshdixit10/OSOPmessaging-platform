@@ -3,6 +3,8 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   body: string;
+  contentHtml?: string;
+  contentText?: string;
   category?: string;
   type?: string;
   createdBy?: string;
@@ -10,8 +12,17 @@ export interface EmailTemplate {
   updatedAt?: string;
   isDefault?: boolean;
   isActive?: boolean;
+  isPublic?: boolean;
   description?: string;
   variables?: string;
+  version?: number;
+  parentTemplateId?: number;
+  usageCount?: number;
+  lastUsedAt?: string;
+  tags?: string[];
+  cssStyles?: string;
+  metadata?: string;
+  thumbnailUrl?: string;
 }
 
 export interface EmailTemplateFormData {

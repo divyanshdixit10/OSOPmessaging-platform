@@ -51,9 +51,9 @@ public class EmailTemplateService {
         EmailTemplate template = EmailTemplate.builder()
                 .name(templateData.getName())
                 .subject(templateData.getSubject())
-                .body(templateData.getBody())
-                .category(templateData.getCategory())
-                .type(templateData.getType())
+                .contentHtml(templateData.getBody())
+                .category(EmailTemplate.TemplateCategory.valueOf(templateData.getCategory()))
+                .type(EmailTemplate.TemplateType.valueOf(templateData.getType()))
                 .description(templateData.getDescription())
                 .variables(templateData.getVariables())
                 .isActive(templateData.getIsActive() != null ? templateData.getIsActive() : true)
@@ -82,14 +82,13 @@ public class EmailTemplateService {
         
         template.setName(templateData.getName());
         template.setSubject(templateData.getSubject());
-        template.setBody(templateData.getBody());
-        template.setCategory(templateData.getCategory());
-        template.setType(templateData.getType());
+        template.setContentHtml(templateData.getBody());
+        template.setCategory(EmailTemplate.TemplateCategory.valueOf(templateData.getCategory()));
+        template.setType(EmailTemplate.TemplateType.valueOf(templateData.getType()));
         template.setDescription(templateData.getDescription());
         template.setVariables(templateData.getVariables());
         template.setIsActive(templateData.getIsActive() != null ? templateData.getIsActive() : template.getIsActive());
         template.setIsDefault(templateData.getIsDefault() != null ? templateData.getIsDefault() : template.getIsDefault());
-        template.setUpdatedAt(LocalDateTime.now());
         
         EmailTemplate updatedTemplate = emailTemplateRepository.save(template);
         log.info("Template updated successfully with ID: {}", updatedTemplate.getId());
@@ -147,7 +146,7 @@ public class EmailTemplateService {
         EmailTemplate duplicatedTemplate = EmailTemplate.builder()
                 .name(originalTemplate.getName() + " (Copy)")
                 .subject(originalTemplate.getSubject())
-                .body(originalTemplate.getBody())
+                .contentHtml(originalTemplate.getContentHtml())
                 .category(originalTemplate.getCategory())
                 .type(originalTemplate.getType())
                 .description(originalTemplate.getDescription())
@@ -200,9 +199,9 @@ public class EmailTemplateService {
                 .id(template.getId())
                 .name(template.getName())
                 .subject(template.getSubject())
-                .body(template.getBody())
-                .category(template.getCategory())
-                .type(template.getType())
+                .body(template.getContentHtml())
+                .category(template.getCategory().toString())
+                .type(template.getType().toString())
                 .description(template.getDescription())
                 .variables(template.getVariables())
                 .isActive(template.getIsActive())

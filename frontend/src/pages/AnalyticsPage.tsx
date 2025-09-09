@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   VStack,
@@ -37,6 +37,15 @@ import {
   Divider,
   Tag,
   TagLabel,
+  Switch,
+  FormControl,
+  FormLabel,
+  Spinner,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  useToast,
 } from '@chakra-ui/react';
 import { IconType } from 'react-icons';
 import {
@@ -53,19 +62,53 @@ import {
   FiTarget,
   FiClock,
   FiRefreshCw,
+  FiActivity,
+  FiLayers,
+  FiZap,
 } from 'react-icons/fi';
-import AnalyticsService, { OverviewMetrics } from '../api/analyticsService';
+import AnalyticsService, { 
+  LiveStats, 
+  CampaignAnalytics, 
+  TemplateAnalytics, 
+  RecentActivity,
+  AnalyticsFilters 
+} from '../api/analyticsService';
+import { useWebSocket } from '../contexts/WebSocketContext';
+
+// Custom hook to safely use WebSocket context
+export const useWebSocketSafe = () => {
+  try {
+    return useWebSocket();
+  } catch (error) {
+    console.warn('WebSocket not available:', error);
+    return {
+      connected: false,
+      subscribe: (topic: string, callback: (message: any) => void) => {},
+      send: (destination: string, body: any) => {},
+      lastMessage: null
+    };
+  }
+};
 
 interface MetricCardProps {
   title: string;
   value: string | number;
-  change: number;
+  change?: number;
   icon: IconType;
   color: string;
   description?: string;
+  isLoading?: boolean;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, icon, color, description }) => (
+const MetricCard: React.FC<MetricCardProps> = ({ 
+  title, 
+  value, 
+  change, 
+  icon, 
+  color, 
+  description, 
+  isLoading = false 
+}) => (
   <Card>
     <CardBody>
       <HStack justify="space-between" align="flex-start">
@@ -75,19 +118,21 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, icon, col
           </Text>
           <Stat>
             <StatNumber fontSize="3xl" fontWeight="bold" color="gray.800">
-              {value}
+              {isLoading ? <Spinner size="sm" /> : value}
             </StatNumber>
             {description && (
               <Text fontSize="sm" color="gray.500">
                 {description}
               </Text>
             )}
-            <HStack spacing={1}>
-              <StatArrow type={change >= 0 ? 'increase' : 'decrease'} />
-              <StatHelpText color={change >= 0 ? 'green.500' : 'red.500'} mb={0}>
-                {Math.abs(change)}% from last period
-              </StatHelpText>
-            </HStack>
+            {change !== undefined && (
+              <HStack spacing={1}>
+                <StatArrow type={change >= 0 ? 'increase' : 'decrease'} />
+                <StatHelpText color={change >= 0 ? 'green.500' : 'red.500'} mb={0}>
+                  {Math.abs(change)}% from last period
+                </StatHelpText>
+              </HStack>
+            )}
           </Stat>
         </VStack>
         <Box
@@ -103,188 +148,194 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, change, icon, col
   </Card>
 );
 
-interface CampaignData {
-  id: string;
-  name: string;
-  sent: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  bounced: number;
-  unsubscribed: number;
-  openRate: number;
-  clickRate: number;
-  status: 'active' | 'completed' | 'scheduled' | 'draft';
-  date: string;
-}
-
-const mockCampaignData: CampaignData[] = [
-  {
-    id: '1',
-    name: 'Newsletter - Q4 2024',
-    sent: 2500,
-    delivered: 2450,
-    opened: 612,
-    clicked: 98,
-    bounced: 50,
-    unsubscribed: 12,
-    openRate: 24.5,
-    clickRate: 4.0,
-    status: 'completed',
-    date: '2024-12-15',
-  },
-  {
-    id: '2',
-    name: 'Product Launch Announcement',
-    sent: 1800,
-    delivered: 1760,
-    opened: 528,
-    clicked: 158,
-    bounced: 40,
-    unsubscribed: 8,
-    openRate: 30.0,
-    clickRate: 9.0,
-    status: 'completed',
-    date: '2024-12-10',
-  },
-  {
-    id: '3',
-    name: 'Welcome Series - Day 1',
-    sent: 500,
-    delivered: 490,
-    opened: 245,
-    clicked: 49,
-    bounced: 10,
-    unsubscribed: 2,
-    openRate: 50.0,
-    clickRate: 10.0,
-    status: 'active',
-    date: '2024-12-20',
-  },
-  {
-    id: '4',
-    name: 'Holiday Promotion',
-    sent: 3200,
-    delivered: 3100,
-    opened: 620,
-    clicked: 186,
-    bounced: 100,
-    unsubscribed: 15,
-    openRate: 20.0,
-    clickRate: 6.0,
-    status: 'scheduled',
-    date: '2024-12-25',
-  },
-];
-
 const getStatusColor = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
+    case 'running':
     case 'active': return 'green';
     case 'completed': return 'blue';
     case 'scheduled': return 'yellow';
     case 'draft': return 'gray';
+    case 'paused': return 'orange';
     default: return 'gray';
+  }
+};
+
+const getActivityIcon = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'campaign_created':
+    case 'campaign_started':
+    case 'campaign_completed': return FiTarget;
+    case 'email_sent':
+    case 'email_opened':
+    case 'email_clicked': return FiMail;
+    case 'template_created':
+    case 'template_updated': return FiLayers;
+    case 'subscriber_added':
+    case 'subscriber_unsubscribed': return FiUsers;
+    default: return FiActivity;
   }
 };
 
 export const AnalyticsPage: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
   const [selectedMetric, setSelectedMetric] = useState('overview');
-  const [overviewData, setOverviewData] = useState<OverviewMetrics | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  
+  // Data states
+  const [liveStats, setLiveStats] = useState<LiveStats | null>(null);
+  const [campaignAnalytics, setCampaignAnalytics] = useState<CampaignAnalytics[]>([]);
+  const [templateAnalytics, setTemplateAnalytics] = useState<TemplateAnalytics[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  
+  const toast = useToast();
+  const { connected, subscribe } = useWebSocketSafe();
 
-  const fetchAnalyticsData = async () => {
+  const getDateRange = useCallback(() => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    switch (selectedPeriod) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case '1y':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+    
+    return {
+      startDate: startDate.toISOString(),
+      endDate: now.toISOString()
+    };
+  }, [selectedPeriod]);
+
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      // Get real data from backend only
-      const data = await AnalyticsService.getOverviewMetrics({
-        startDate: selectedPeriod === '7d' ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : 
-                 selectedPeriod === '30d' ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() :
-                 new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date().toISOString()
-      });
-      setOverviewData(data);
-      setLastUpdated(new Date());
       setError(null);
+      
+      const dateRange = getDateRange();
+      const filters: AnalyticsFilters = {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate
+      };
+
+      // Fetch all data in parallel
+      const [liveStatsData, campaignsData, templatesData, activitiesData] = await Promise.all([
+        AnalyticsService.getLiveStats(filters),
+        AnalyticsService.getCampaignAnalytics(filters),
+        AnalyticsService.getTemplateAnalytics(filters),
+        AnalyticsService.getRecentActivities(10)
+      ]);
+
+      setLiveStats(liveStatsData);
+      setCampaignAnalytics(campaignsData);
+      setTemplateAnalytics(templatesData);
+      setRecentActivities(activitiesData);
+      setLastUpdated(new Date());
+      
     } catch (err) {
       console.error('Error fetching analytics data:', err);
       setError('Failed to load analytics data from backend');
+      toast({
+        title: 'Error',
+        description: 'Failed to load analytics data',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
+  }, [getDateRange, toast]);
+
+  // WebSocket subscription for real-time updates
+  useEffect(() => {
+    if (connected && autoRefresh) {
+      subscribe('/topic/analytics_live', (message) => {
+        if (message.type === 'live_analytics_broadcast' && message.data) {
+          setLiveStats(message.data);
+          setLastUpdated(new Date());
+        }
+      });
+    }
+  }, [connected, autoRefresh, subscribe]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    fetchAllData();
+    
+    if (autoRefresh && !connected) {
+      const interval = setInterval(fetchAllData, 10000); // 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [fetchAllData, autoRefresh, connected]);
+
+  // Manual refresh
+  const handleRefresh = () => {
+    fetchAllData();
   };
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [selectedPeriod]);
-
-  const overviewMetrics = [
+  const liveStatsMetrics = [
     {
       title: 'Total Emails Sent',
-      value: overviewData?.totalEmailsSent?.toLocaleString() || '0',
+      value: liveStats?.totalEmailsSent?.toLocaleString() || '0',
       change: 15.2,
       icon: FiMail,
       color: 'blue',
       description: selectedPeriod === '7d' ? 'This week' : selectedPeriod === '30d' ? 'This month' : 'This quarter',
     },
     {
-      title: 'Open Rate',
-      value: overviewData?.openRate ? `${overviewData.openRate.toFixed(1)}%` : '0%',
+      title: 'Active Subscribers',
+      value: liveStats?.activeSubscribers?.toLocaleString() || '0',
       change: 8.5,
-      icon: FiEye,
+      icon: FiUsers,
       color: 'green',
+      description: 'Currently subscribed',
+    },
+    {
+      title: 'Open Rate',
+      value: liveStats?.openRate ? `${liveStats.openRate.toFixed(1)}%` : '0%',
+      change: 12.3,
+      icon: FiEye,
+      color: 'purple',
       description: 'Industry avg: 21.5%',
     },
     {
       title: 'Click Rate',
-      value: overviewData?.clickRate ? `${overviewData.clickRate.toFixed(1)}%` : '0%',
-      change: 12.3,
+      value: liveStats?.clickRate ? `${liveStats.clickRate.toFixed(1)}%` : '0%',
+      change: 18.2,
       icon: FiTarget,
-      color: 'purple',
-      description: 'Industry avg: 2.8%',
-    },
-    {
-      title: 'Bounce Rate',
-      value: overviewData?.bounceRate ? `${overviewData.bounceRate.toFixed(1)}%` : '0%',
-      change: -5.2,
-      icon: FiTrendingDown,
       color: 'orange',
-      description: 'Industry avg: 2.5%',
+      description: 'Industry avg: 2.8%',
     },
   ];
 
-  const engagementMetrics = [
-    {
-      title: 'Average Time to Open',
-      value: '2.4 hrs',
-      change: -12.5,
-      icon: FiClock,
-      color: 'teal',
-    },
-    {
-      title: 'Click-to-Open Rate',
-      value: '15.7%',
-      change: 18.2,
-              icon: FiBarChart,
-      color: 'cyan',
-    },
-    {
-      title: 'Unsubscribe Rate',
-      value: '0.3%',
-      change: -8.1,
-      icon: FiUsers,
-      color: 'red',
-    },
-    {
-      title: 'Spam Complaints',
-      value: '0.02%',
-      change: -25.0,
-      icon: FiTrendingDown,
-      color: 'green',
-    },
-  ];
+  if (error) {
+    return (
+      <VStack spacing={4} align="stretch">
+        <Alert status="error">
+          <AlertIcon />
+          <AlertTitle>Error loading analytics!</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={handleRefresh} leftIcon={<Icon as={FiRefreshCw as any} />}>
+          Retry
+        </Button>
+      </VStack>
+    );
+  }
 
   return (
     <VStack spacing={8} align="stretch">
@@ -300,15 +351,39 @@ export const AnalyticsPage: React.FC = () => {
             </Text>
           </Box>
           <VStack spacing={2} align="flex-end">
-            <Button
-              size="sm"
-              variant="outline"
-              leftIcon={<Icon as={FiRefreshCw as any} />}
-              onClick={fetchAnalyticsData}
-              isLoading={loading}
-            >
-              Refresh
-            </Button>
+            <HStack spacing={4}>
+              <HStack spacing={2}>
+                <Box
+                  w={2}
+                  h={2}
+                  borderRadius="full"
+                  bg={connected ? 'green.500' : 'red.500'}
+                />
+                <Text fontSize="xs" color="gray.500">
+                  {connected ? 'Live' : 'Offline'}
+                </Text>
+              </HStack>
+              <FormControl display="flex" alignItems="center">
+                <FormLabel htmlFor="auto-refresh" mb="0" fontSize="sm">
+                  Auto-refresh
+                </FormLabel>
+                <Switch
+                  id="auto-refresh"
+                  isChecked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  colorScheme="blue"
+                />
+              </FormControl>
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<Icon as={FiRefreshCw as any} />}
+                onClick={handleRefresh}
+                isLoading={loading}
+              >
+                Refresh
+              </Button>
+            </HStack>
             {lastUpdated && (
               <Text fontSize="xs" color="gray.500">
                 Last updated: {lastUpdated.toLocaleTimeString()}
@@ -338,8 +413,9 @@ export const AnalyticsPage: React.FC = () => {
             w="180px"
           >
             <option value="overview">Overview</option>
-            <option value="engagement">Engagement</option>
-            <option value="campaigns">Campaign Performance</option>
+            <option value="campaigns">Campaign Analytics</option>
+            <option value="templates">Template Analytics</option>
+            <option value="activity">Recent Activity</option>
           </Select>
         </HStack>
 
@@ -348,61 +424,75 @@ export const AnalyticsPage: React.FC = () => {
         </Button>
       </HStack>
 
-      {/* Metrics Grid */}
+      {/* Live Stats Cards */}
       <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-        {(selectedMetric === 'overview' ? overviewMetrics : engagementMetrics).map((metric, index) => (
+        {liveStatsMetrics.map((metric, index) => (
           <GridItem key={index}>
-            <MetricCard {...metric} />
+            <MetricCard {...metric} isLoading={loading} />
           </GridItem>
         ))}
       </Grid>
 
-      {/* Charts and Tables */}
-      <Tabs index={['overview', 'engagement', 'campaigns'].indexOf(selectedMetric)} onChange={(index) => setSelectedMetric(['overview', 'engagement', 'campaigns'][index])}>
+      {/* Main Content Tabs */}
+      <Tabs index={['overview', 'campaigns', 'templates', 'activity'].indexOf(selectedMetric)} 
+            onChange={(index) => setSelectedMetric(['overview', 'campaigns', 'templates', 'activity'][index])}>
         <TabList>
           <Tab>Overview</Tab>
-          <Tab>Engagement</Tab>
-          <Tab>Campaign Performance</Tab>
+          <Tab>Campaign Analytics</Tab>
+          <Tab>Template Analytics</Tab>
+          <Tab>Recent Activity</Tab>
         </TabList>
 
         <TabPanels>
           {/* Overview Tab */}
           <TabPanel p={0} pt={6}>
             <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={8}>
-              {/* Chart Placeholder */}
+              {/* Campaign Performance Summary */}
               <GridItem>
                 <Card>
                   <CardHeader>
                     <Heading size="md" color="gray.800">
-                      Email Performance Trends
+                      Campaign Performance Summary
                     </Heading>
                   </CardHeader>
                   <CardBody>
-                    <Box
-                      h="300px"
-                      bg="gray.50"
-                      borderRadius="lg"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      border="2px dashed"
-                      borderColor="gray.200"
-                    >
-                      <VStack spacing={2}>
-                        <Icon as={FiBarChart as any} boxSize={12} color="gray.400" />
-                        <Text color="gray.500" fontSize="lg">
-                          Performance Chart
-                        </Text>
-                        <Text color="gray.400" fontSize="sm">
-                          Chart component integration coming soon
-                        </Text>
-                      </VStack>
-                    </Box>
+                    <VStack spacing={4} align="stretch">
+                      {campaignAnalytics.slice(0, 5).map((campaign) => (
+                        <Box key={campaign.id} p={4} border="1px solid" borderColor="gray.200" borderRadius="lg">
+                          <HStack justify="space-between" mb={2}>
+                            <Text fontWeight="medium" color="gray.800">
+                              {campaign.name}
+                            </Text>
+                            <Badge colorScheme={getStatusColor(campaign.status)} size="sm">
+                              {campaign.status}
+                            </Badge>
+                          </HStack>
+                          <VStack spacing={2} align="stretch">
+                            <HStack justify="space-between">
+                              <Text fontSize="sm" color="gray.600">Progress</Text>
+                              <Text fontSize="sm" fontWeight="medium">
+                                {campaign.sentCount} / {campaign.totalRecipients}
+                              </Text>
+                            </HStack>
+                            <Progress 
+                              value={campaign.progressPercentage} 
+                              colorScheme="blue" 
+                              size="sm" 
+                              borderRadius="full" 
+                            />
+                            <HStack justify="space-between" fontSize="sm">
+                              <Text color="green.600">Open: {campaign.openRate.toFixed(1)}%</Text>
+                              <Text color="blue.600">Click: {campaign.clickRate.toFixed(1)}%</Text>
+                            </HStack>
+                          </VStack>
+                        </Box>
+                      ))}
+                    </VStack>
                   </CardBody>
                 </Card>
               </GridItem>
 
-              {/* Quick Stats */}
+              {/* Quick Insights */}
               <GridItem>
                 <Card>
                   <CardHeader>
@@ -414,114 +504,48 @@ export const AnalyticsPage: React.FC = () => {
                     <VStack spacing={4} align="stretch">
                       <Box p={4} bg="green.50" borderRadius="lg" border="1px solid" borderColor="green.200">
                         <Text fontSize="sm" fontWeight="medium" color="green.800">
-                          🎯 Best Performing
+                          🎯 Best Performing Campaign
                         </Text>
                         <Text fontSize="lg" fontWeight="bold" color="green.800">
-                          Welcome Series
+                          {campaignAnalytics.length > 0 
+                            ? campaignAnalytics.reduce((best, current) => 
+                                current.openRate > best.openRate ? current : best
+                              ).name
+                            : 'No campaigns yet'
+                          }
                         </Text>
                         <Text fontSize="sm" color="green.700">
-                          50% open rate, 10% click rate
+                          {campaignAnalytics.length > 0 
+                            ? `${campaignAnalytics.reduce((best, current) => 
+                                current.openRate > best.openRate ? current : best
+                              ).openRate.toFixed(1)}% open rate`
+                            : 'Start your first campaign'
+                          }
                         </Text>
                       </Box>
 
                       <Box p={4} bg="blue.50" borderRadius="lg" border="1px solid" borderColor="blue.200">
                         <Text fontSize="sm" fontWeight="medium" color="blue.800">
-                          📈 Trending Up
+                          📈 Total Campaigns
                         </Text>
                         <Text fontSize="lg" fontWeight="bold" color="blue.800">
-                          Click Rate
+                          {liveStats?.totalCampaigns || 0}
                         </Text>
                         <Text fontSize="sm" color="blue.700">
-                          +12.3% from last period
+                          {liveStats?.activeCampaigns || 0} active
                         </Text>
                       </Box>
 
-                      <Box p={4} bg="orange.50" borderRadius="lg" border="1px solid" borderColor="orange.200">
-                        <Text fontSize="sm" fontWeight="medium" color="orange.800">
-                          ⚠️ Needs Attention
+                      <Box p={4} bg="purple.50" borderRadius="lg" border="1px solid" borderColor="purple.200">
+                        <Text fontSize="sm" fontWeight="medium" color="purple.800">
+                          📊 Template Usage
                         </Text>
-                        <Text fontSize="lg" fontWeight="bold" color="orange.800">
-                          Bounce Rate
+                        <Text fontSize="lg" fontWeight="bold" color="purple.800">
+                          {templateAnalytics.length} templates
                         </Text>
-                        <Text fontSize="sm" color="orange.700">
-                          Slightly above industry average
+                        <Text fontSize="sm" color="purple.700">
+                          {templateAnalytics.reduce((sum, t) => sum + t.totalUsage, 0)} total uses
                         </Text>
-                      </Box>
-                    </VStack>
-                  </CardBody>
-                </Card>
-              </GridItem>
-            </Grid>
-          </TabPanel>
-
-          {/* Engagement Tab */}
-          <TabPanel p={0} pt={6}>
-            <Grid templateColumns={{ base: '1fr', lg: '1fr 1fr' }} gap={8}>
-              {/* Engagement Chart */}
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="md" color="gray.800">
-                      Engagement Over Time
-                    </Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Box
-                      h="300px"
-                      bg="gray.50"
-                      borderRadius="lg"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      border="2px dashed"
-                      borderColor="gray.200"
-                    >
-                      <VStack spacing={2}>
-                        <Icon as={FiPieChart as any} boxSize={12} color="gray.400" />
-                        <Text color="gray.500" fontSize="lg">
-                          Engagement Chart
-                        </Text>
-                        <Text color="gray.400" fontSize="sm">
-                          Visualize engagement patterns
-                        </Text>
-                      </VStack>
-                    </Box>
-                  </CardBody>
-                </Card>
-              </GridItem>
-
-              {/* Subscriber Activity */}
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="md" color="gray.800">
-                      Subscriber Activity
-                    </Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      <Box>
-                        <HStack justify="space-between" mb={2}>
-                          <Text fontSize="sm" color="gray.600">Active Subscribers</Text>
-                          <Text fontSize="sm" fontWeight="medium">8,234</Text>
-                        </HStack>
-                        <Progress value={82} colorScheme="green" size="sm" borderRadius="full" />
-                      </Box>
-
-                      <Box>
-                        <HStack justify="space-between" mb={2}>
-                          <Text fontSize="sm" color="gray.600">Engaged (Opened last 30 days)</Text>
-                          <Text fontSize="sm" fontWeight="medium">6,587</Text>
-                        </HStack>
-                        <Progress value={65} colorScheme="blue" size="sm" borderRadius="full" />
-                      </Box>
-
-                      <Box>
-                        <HStack justify="space-between" mb={2}>
-                          <Text fontSize="sm" color="gray.600">Highly Engaged (Clicked last 30 days)</Text>
-                          <Text fontSize="sm" fontWeight="medium">2,456</Text>
-                        </HStack>
-                        <Progress value={24} colorScheme="purple" size="sm" borderRadius="full" />
                       </Box>
                     </VStack>
                   </CardBody>
@@ -530,12 +554,12 @@ export const AnalyticsPage: React.FC = () => {
             </Grid>
           </TabPanel>
 
-          {/* Campaign Performance Tab */}
+          {/* Campaign Analytics Tab */}
           <TabPanel p={0} pt={6}>
             <Card>
               <CardHeader>
                 <Heading size="md" color="gray.800">
-                  Campaign Performance
+                  Campaign Performance Analytics
                 </Heading>
               </CardHeader>
               <CardBody>
@@ -543,16 +567,16 @@ export const AnalyticsPage: React.FC = () => {
                   <Thead>
                     <Tr>
                       <Th>Campaign</Th>
+                      <Th>Status</Th>
+                      <Th>Progress</Th>
                       <Th>Sent</Th>
                       <Th>Open Rate</Th>
                       <Th>Click Rate</Th>
-                      <Th>Bounce Rate</Th>
-                      <Th>Status</Th>
-                      <Th>Date</Th>
+                      <Th>Created</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {mockCampaignData.map((campaign) => (
+                    {campaignAnalytics.map((campaign) => (
                       <Tr key={campaign.id}>
                         <Td>
                           <VStack align="flex-start" spacing={1}>
@@ -560,14 +584,35 @@ export const AnalyticsPage: React.FC = () => {
                               {campaign.name}
                             </Text>
                             <Text fontSize="sm" color="gray.500">
-                              {campaign.delivered.toLocaleString()} delivered
+                              {campaign.description}
                             </Text>
                           </VStack>
                         </Td>
-                        <Td>{campaign.sent.toLocaleString()}</Td>
+                        <Td>
+                          <Badge colorScheme={getStatusColor(campaign.status)} size="sm">
+                            {campaign.status}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <VStack spacing={1} align="stretch">
+                            <HStack justify="space-between" fontSize="sm">
+                              <Text>{campaign.progressPercentage.toFixed(1)}%</Text>
+                              <Text color="gray.500">
+                                {campaign.sentCount}/{campaign.totalRecipients}
+                              </Text>
+                            </HStack>
+                            <Progress 
+                              value={campaign.progressPercentage} 
+                              colorScheme="blue" 
+                              size="sm" 
+                              borderRadius="full" 
+                            />
+                          </VStack>
+                        </Td>
+                        <Td>{campaign.sentCount.toLocaleString()}</Td>
                         <Td>
                           <HStack spacing={2}>
-                            <Text fontWeight="medium">{campaign.openRate}%</Text>
+                            <Text fontWeight="medium">{campaign.openRate.toFixed(1)}%</Text>
                             <Badge
                               colorScheme={campaign.openRate > 25 ? 'green' : 'yellow'}
                               size="sm"
@@ -578,7 +623,7 @@ export const AnalyticsPage: React.FC = () => {
                         </Td>
                         <Td>
                           <HStack spacing={2}>
-                            <Text fontWeight="medium">{campaign.clickRate}%</Text>
+                            <Text fontWeight="medium">{campaign.clickRate.toFixed(1)}%</Text>
                             <Badge
                               colorScheme={campaign.clickRate > 5 ? 'green' : 'yellow'}
                               size="sm"
@@ -588,24 +633,135 @@ export const AnalyticsPage: React.FC = () => {
                           </HStack>
                         </Td>
                         <Td>
-                          <Text color={campaign.bounced / campaign.sent > 0.05 ? 'red.500' : 'gray.600'}>
-                            {((campaign.bounced / campaign.sent) * 100).toFixed(1)}%
-                          </Text>
-                        </Td>
-                        <Td>
-                          <Badge colorScheme={getStatusColor(campaign.status)} size="sm">
-                            {campaign.status}
-                          </Badge>
-                        </Td>
-                        <Td>
                           <Text fontSize="sm" color="gray.500">
-                            {new Date(campaign.date).toLocaleDateString()}
+                            {new Date(campaign.createdAt).toLocaleDateString()}
                           </Text>
                         </Td>
                       </Tr>
                     ))}
                   </Tbody>
                 </Table>
+              </CardBody>
+            </Card>
+          </TabPanel>
+
+          {/* Template Analytics Tab */}
+          <TabPanel p={0} pt={6}>
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
+                  Template Usage Analytics
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <Table variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>Template</Th>
+                      <Th>Total Usage</Th>
+                      <Th>Open Rate</Th>
+                      <Th>Click Rate</Th>
+                      <Th>Last Used</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {templateAnalytics.map((template) => (
+                      <Tr key={template.id}>
+                        <Td>
+                          <VStack align="flex-start" spacing={1}>
+                            <Text fontWeight="medium" color="gray.800">
+                              {template.name}
+                            </Text>
+                            <Text fontSize="sm" color="gray.500">
+                              {template.description}
+                            </Text>
+                          </VStack>
+                        </Td>
+                        <Td>
+                          <Text fontWeight="medium">{template.totalUsage}</Text>
+                        </Td>
+                        <Td>
+                          <HStack spacing={2}>
+                            <Text fontWeight="medium">{template.openRate.toFixed(1)}%</Text>
+                            <Badge
+                              colorScheme={template.openRate > 20 ? 'green' : 'yellow'}
+                              size="sm"
+                            >
+                              {template.openRate > 20 ? 'Good' : 'Average'}
+                            </Badge>
+                          </HStack>
+                        </Td>
+                        <Td>
+                          <HStack spacing={2}>
+                            <Text fontWeight="medium">{template.clickRate.toFixed(1)}%</Text>
+                            <Badge
+                              colorScheme={template.clickRate > 3 ? 'green' : 'yellow'}
+                              size="sm"
+                            >
+                              {template.clickRate > 3 ? 'Good' : 'Average'}
+                            </Badge>
+                          </HStack>
+                        </Td>
+                        <Td>
+                          <Text fontSize="sm" color="gray.500">
+                            {template.lastUsedAt 
+                              ? new Date(template.lastUsedAt).toLocaleDateString()
+                              : 'Never'
+                            }
+                          </Text>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </CardBody>
+            </Card>
+          </TabPanel>
+
+          {/* Recent Activity Tab */}
+          <TabPanel p={0} pt={6}>
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.800">
+                  Recent Activity Feed
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4} align="stretch">
+                  {recentActivities.map((activity) => {
+                    const ActivityIcon = getActivityIcon(activity.type);
+                    return (
+                      <Box key={activity.id} p={4} border="1px solid" borderColor="gray.200" borderRadius="lg">
+                        <HStack spacing={3} align="flex-start">
+                          <Box
+                            p={2}
+                            bg="blue.100"
+                            borderRadius="lg"
+                            color="blue.600"
+                          >
+                            <Icon as={ActivityIcon as any} boxSize={4} />
+                          </Box>
+                          <VStack align="flex-start" spacing={1} flex={1}>
+                            <Text fontWeight="medium" color="gray.800">
+                              {activity.title}
+                            </Text>
+                            <Text fontSize="sm" color="gray.600">
+                              {activity.description}
+                            </Text>
+                            <HStack spacing={2}>
+                              <Tag size="sm" colorScheme="gray">
+                                <TagLabel>{activity.type.replace('_', ' ')}</TagLabel>
+                              </Tag>
+                              <Text fontSize="xs" color="gray.500">
+                                {activity.timeAgo}
+                              </Text>
+                            </HStack>
+                          </VStack>
+                        </HStack>
+                      </Box>
+                    );
+                  })}
+                </VStack>
               </CardBody>
             </Card>
           </TabPanel>

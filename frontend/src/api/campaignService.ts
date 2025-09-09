@@ -1,5 +1,3 @@
-import { CampaignDto, CampaignStatus, MessageChannel } from '../types/Campaign';
-
 const API_BASE_URL = 'http://localhost:8080/api';
 
 // Helper function to get auth headers
@@ -11,19 +9,61 @@ const getAuthHeaders = () => {
   };
 };
 
-export interface CampaignFilters {
-  name?: string;
-  status?: string;
-  channel?: string;
-  isDraft?: boolean;
+export interface SendCampaignRequest {
+  campaignId: number;
+  userId: string;
+  batchSize?: number;
+  rateLimitPerMinute?: number;
 }
 
-export interface PaginatedResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
+export interface ScheduleCampaignRequest {
+  campaignId: number;
+  userId: string;
+  scheduledTime: string;
+  batchSize?: number;
+  rateLimitPerMinute?: number;
+}
+
+export interface CampaignProgress {
+  campaignId: number;
+  status: string;
+  totalRecipients: number;
+  emailsSent: number;
+  emailsSuccess: number;
+  emailsFailed: number;
+  emailsInProgress: number;
+  progressPercentage: number;
+  successRate: number;
+  failureRate: number;
+  currentBatchNumber: number;
+  totalBatches: number;
+  scheduledTime?: string;
+  startedAt?: string;
+  completedAt?: string;
+  lastBatchSentAt?: string;
+  errorMessage?: string;
+}
+
+export interface CampaignAnalytics {
+  id: number;
+  name: string;
+  description: string;
+  status: string;
+  totalRecipients: number;
+  sentCount: number;
+  deliveredCount: number;
+  openedCount: number;
+  clickedCount: number;
+  bouncedCount: number;
+  unsubscribedCount: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  unsubscribeRate: number;
+  progressPercentage: number;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export class CampaignService {
@@ -35,130 +75,76 @@ export class CampaignService {
     return response.json();
   }
 
-  static async getCampaigns(filters: CampaignFilters = {}, page: number = 0, size: number = 20): Promise<PaginatedResponse<CampaignDto>> {
-    const params = new URLSearchParams();
-    
-    if (filters.name) params.append('name', filters.name);
-    if (filters.status) params.append('status', filters.status);
-    if (filters.channel) params.append('channel', filters.channel);
-    if (filters.isDraft !== undefined) params.append('isDraft', filters.isDraft.toString());
-    
-    params.append('page', page.toString());
-    params.append('size', size.toString());
-
-    const response = await fetch(`${API_BASE_URL}/campaigns?${params.toString()}`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<PaginatedResponse<CampaignDto>>(response);
-  }
-
-  static async getCampaignById(id: string): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<CampaignDto>(response);
-  }
-
-  static async createCampaign(campaign: CampaignDto): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns`, {
+  // Send campaign immediately
+  static async sendCampaign(request: SendCampaignRequest): Promise<{ success: boolean; message: string; campaignId: number }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/send`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(campaign),
+      body: JSON.stringify(request)
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string; campaignId: number }>(response);
   }
 
-  static async updateCampaign(id: string, campaign: CampaignDto): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
-      method: 'PUT',
+  // Schedule campaign for later
+  static async scheduleCampaign(request: ScheduleCampaignRequest): Promise<{ success: boolean; message: string; campaignId: number; scheduledTime: string }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/schedule`, {
+      method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(campaign),
+      body: JSON.stringify(request)
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string; campaignId: number; scheduledTime: string }>(response);
   }
 
-  static async deleteCampaign(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}`, {
-      method: 'DELETE',
+  // Get campaign progress
+  static async getCampaignProgress(campaignId: number): Promise<CampaignProgress> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/progress`, {
       headers: getAuthHeaders()
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
+    return this.handleResponse<CampaignProgress>(response);
   }
 
-  static async startCampaign(id: string): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}/start`, {
+  // Pause campaign
+  static async pauseCampaign(campaignId: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/pause`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string }>(response);
   }
 
-  static async pauseCampaign(id: string): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}/pause`, {
+  // Resume campaign
+  static async resumeCampaign(campaignId: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/resume`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string }>(response);
   }
 
-  static async resumeCampaign(id: string): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}/resume`, {
+  // Cancel campaign
+  static async cancelCampaign(campaignId: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/cancel`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string }>(response);
   }
 
-  static async cancelCampaign(id: string): Promise<CampaignDto> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}/cancel`, {
+  // Retry failed emails
+  static async retryFailedEmails(campaignId: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/retry-failed`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return this.handleResponse<CampaignDto>(response);
+    return this.handleResponse<{ success: boolean; message: string }>(response);
   }
 
-  static async getCampaignStats(id: string): Promise<Record<string, any>> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${id}/stats`, {
+  // Get campaign analytics
+  static async getCampaignAnalytics(campaignId: number): Promise<CampaignAnalytics> {
+    const response = await fetch(`${API_BASE_URL}/campaigns/enhanced/${campaignId}/analytics`, {
       headers: getAuthHeaders()
     });
-    return this.handleResponse<Record<string, any>>(response);
-  }
-
-  static async getOverallStats(): Promise<Record<string, any>> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/stats/overview`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<Record<string, any>>(response);
-  }
-
-  static async getCampaignsByStatus(status: string): Promise<CampaignDto[]> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/status/${status}`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<CampaignDto[]>(response);
-  }
-
-  static async getScheduledCampaigns(): Promise<CampaignDto[]> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/scheduled`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<CampaignDto[]>(response);
-  }
-
-  static async getRunningCampaigns(): Promise<CampaignDto[]> {
-    const response = await fetch(`${API_BASE_URL}/campaigns/running`, {
-      headers: getAuthHeaders()
-    });
-    return this.handleResponse<CampaignDto[]>(response);
-  }
-
-
-  // Real backend data only - no fallbacks
-  static async getCampaignsReal(filters: CampaignFilters = {}, page: number = 0, size: number = 20): Promise<PaginatedResponse<CampaignDto>> {
-    return await this.getCampaigns(filters, page, size);
+    return this.handleResponse<CampaignAnalytics>(response);
   }
 }
 

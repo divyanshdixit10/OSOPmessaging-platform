@@ -83,4 +83,14 @@ public interface EmailEventRepository extends JpaRepository<EmailEvent, Long> {
     List<EmailEvent> findByEventDataContaining(String eventData);
     
     List<EmailEvent> findByEventTypeAndCreatedAtAfter(EmailEventType eventType, LocalDateTime createdAt);
+    
+    // Additional methods for template analytics
+    @Query("SELECT COUNT(e) FROM EmailEvent e WHERE e.campaign.template.id = :templateId")
+    long countByCampaignTemplateId(@Param("templateId") Long templateId);
+    
+    @Query("SELECT COUNT(e) FROM EmailEvent e WHERE e.campaign.template.id = :templateId AND e.eventType = :eventType")
+    long countByCampaignTemplateIdAndEventType(@Param("templateId") Long templateId, @Param("eventType") EmailEventType eventType);
+    
+    @Query("SELECT MAX(e.createdAt) FROM EmailEvent e WHERE e.campaign.template.id = :templateId")
+    LocalDateTime findLatestByCampaignTemplateId(@Param("templateId") Long templateId);
 }

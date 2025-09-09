@@ -52,4 +52,56 @@ public class MessageLog {
     
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
+    
+    // Campaign tracking fields
+    @Column(name = "campaign_id")
+    private Long campaignId;
+    
+    @Column(name = "batch_number")
+    private Integer batchNumber;
+    
+    @Column(name = "retry_count")
+    @Builder.Default
+    private Integer retryCount = 0;
+    
+    @Column(name = "max_retries")
+    @Builder.Default
+    private Integer maxRetries = 3;
+    
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+    
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+    
+    @Column(name = "opened_at")
+    private LocalDateTime openedAt;
+    
+    @Column(name = "clicked_at")
+    private LocalDateTime clickedAt;
+    
+    @Column(name = "bounced_at")
+    private LocalDateTime bouncedAt;
+    
+    @Column(name = "unsubscribed_at")
+    private LocalDateTime unsubscribedAt;
+    
+    @Column(name = "provider_message_id")
+    private String providerMessageId;
+    
+    @Column(name = "processing_time_ms")
+    private Long processingTimeMs;
+    
+    // Helper methods
+    public boolean isSuccess() {
+        return status == MessageStatus.SENT || status == MessageStatus.DELIVERED;
+    }
+    
+    public boolean canRetry() {
+        return retryCount < maxRetries && !isSuccess();
+    }
+    
+    public void incrementRetry() {
+        this.retryCount++;
+    }
 } 

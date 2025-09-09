@@ -70,7 +70,34 @@ const SendEmailPage: React.FC = () => {
   const loadTemplates = async () => {
     try {
       const response = await TemplateService.getTemplates();
-      setTemplates(response.content);
+      // Convert Template[] to EmailTemplate[]
+      const convertedTemplates: EmailTemplate[] = response.content.map(template => ({
+        id: template.id,
+        name: template.name,
+        subject: template.subject,
+        body: template.contentHtml, // Map contentHtml to body
+        contentHtml: template.contentHtml,
+        contentText: template.contentText,
+        category: template.category,
+        type: template.type,
+        createdBy: template.createdBy,
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
+        isDefault: template.isDefault,
+        isActive: template.isActive,
+        isPublic: template.isPublic,
+        description: template.description,
+        variables: template.variables,
+        version: template.version,
+        parentTemplateId: template.parentTemplateId,
+        usageCount: template.usageCount,
+        lastUsedAt: template.lastUsedAt,
+        tags: template.tags,
+        cssStyles: template.cssStyles,
+        metadata: template.metadata,
+        thumbnailUrl: template.thumbnailUrl,
+      }));
+      setTemplates(convertedTemplates);
     } catch (error) {
       toast({
         title: 'Error loading templates',
@@ -83,10 +110,53 @@ const SendEmailPage: React.FC = () => {
 
   const handleTemplateSave = async (template: EmailTemplate) => {
     try {
-      const savedTemplate = await TemplateService.createTemplate(template);
+      // Convert EmailTemplate to CreateTemplateRequest
+      const createRequest = {
+        name: template.name,
+        subject: template.subject,
+        contentHtml: template.body || template.contentHtml || '',
+        contentText: template.contentText,
+        category: template.category || 'CUSTOM',
+        type: template.type || 'HTML',
+        description: template.description,
+        cssStyles: template.cssStyles,
+        variables: template.variables,
+        tags: template.tags,
+        isPublic: template.isPublic || false,
+        isActive: template.isActive !== false,
+        isDefault: template.isDefault || false,
+      };
+      const savedTemplate = await TemplateService.createTemplate(createRequest);
       await loadTemplates();
-      setSelectedTemplate(savedTemplate);
-      return savedTemplate;
+      // Convert the returned Template back to EmailTemplate
+      const convertedTemplate: EmailTemplate = {
+        id: savedTemplate.id,
+        name: savedTemplate.name,
+        subject: savedTemplate.subject,
+        body: savedTemplate.contentHtml,
+        contentHtml: savedTemplate.contentHtml,
+        contentText: savedTemplate.contentText,
+        category: savedTemplate.category,
+        type: savedTemplate.type,
+        createdBy: savedTemplate.createdBy,
+        createdAt: savedTemplate.createdAt,
+        updatedAt: savedTemplate.updatedAt,
+        isDefault: savedTemplate.isDefault,
+        isActive: savedTemplate.isActive,
+        isPublic: savedTemplate.isPublic,
+        description: savedTemplate.description,
+        variables: savedTemplate.variables,
+        version: savedTemplate.version,
+        parentTemplateId: savedTemplate.parentTemplateId,
+        usageCount: savedTemplate.usageCount,
+        lastUsedAt: savedTemplate.lastUsedAt,
+        tags: savedTemplate.tags,
+        cssStyles: savedTemplate.cssStyles,
+        metadata: savedTemplate.metadata,
+        thumbnailUrl: savedTemplate.thumbnailUrl,
+      };
+      setSelectedTemplate(convertedTemplate);
+      return convertedTemplate;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to save template');
     }

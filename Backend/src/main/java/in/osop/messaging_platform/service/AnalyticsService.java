@@ -1,15 +1,8 @@
 package in.osop.messaging_platform.service;
 
-import in.osop.messaging_platform.dto.DashboardStatsDto;
-import in.osop.messaging_platform.dto.OverviewMetricsDto;
-import in.osop.messaging_platform.model.Campaign;
-import in.osop.messaging_platform.model.CampaignStatus;
-import in.osop.messaging_platform.model.EmailEvent;
-import in.osop.messaging_platform.model.EmailEventType;
-import in.osop.messaging_platform.model.SubscriptionStatus;
-import in.osop.messaging_platform.repository.CampaignRepository;
-import in.osop.messaging_platform.repository.EmailEventRepository;
-import in.osop.messaging_platform.repository.SubscriberRepository;
+import in.osop.messaging_platform.dto.*;
+import in.osop.messaging_platform.model.*;
+import in.osop.messaging_platform.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +22,8 @@ public class AnalyticsService {
     private final CampaignRepository campaignRepository;
     private final SubscriberRepository subscriberRepository;
     private final EmailEventRepository emailEventRepository;
+    private final ActivityLogRepository activityLogRepository;
+    private final EmailTemplateRepository emailTemplateRepository;
     
     public DashboardStatsDto getDashboardStats(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Calculating dashboard stats from database");
@@ -274,5 +270,146 @@ public class AnalyticsService {
             long days = hours / 24;
             return days + " days ago";
         }
+    }
+    
+    // New methods for enhanced analytics
+    
+    public LiveStatsDto getLiveStats(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Calculating live stats from database");
+        
+        // Set default date range if not provided (last 30 days)
+        if (startDate == null) {
+            startDate = LocalDateTime.now().minusDays(30);
+        }
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
+        
+        // Get total emails sent
+        Long totalEmailsSent = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.SENT, startDate, endDate);
+        
+        // Get active subscribers
+        Long activeSubscribers = subscriberRepository.countByStatus(SubscriptionStatus.ACTIVE);
+        
+        // Calculate open rate
+        Long totalOpens = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.OPENED, startDate, endDate);
+        Double openRate = totalEmailsSent > 0 ? (double) totalOpens / totalEmailsSent * 100 : 0.0;
+        
+        // Calculate click rate
+        Long totalClicks = emailEventRepository.countByEventTypeAndCreatedAtBetween(
+            EmailEventType.CLICKED, startDate, endDate);
+        Double clickRate = totalEmailsSent > 0 ? (double) totalClicks / totalEmailsSent * 100 : 0.0;
+        
+        // Get campaign counts
+        Long totalCampaigns = campaignRepository.count();
+        Long activeCampaigns = campaignRepository.countByStatusIn(
+            List.of(CampaignStatus.RUNNING, CampaignStatus.SCHEDULED));
+        
+        // Get recent activities
+        List<RecentActivityDto> recentActivity = getRecentActivities(10);
+        
+        return LiveStatsDto.builder()
+            .totalEmailsSent(totalEmailsSent)
+            .activeSubscribers(activeSubscribers)
+            .openRate(Math.round(openRate * 100.0) / 100.0)
+            .clickRate(Math.round(clickRate * 100.0) / 100.0)
+            .totalCampaigns(totalCampaigns)
+            .activeCampaigns(activeCampaigns)
+            .lastUpdated(LocalDateTime.now())
+            .recentActivity(recentActivity)
+            .build();
+    }
+    
+    public List<CampaignAnalyticsDto> getCampaignAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Calculating campaign analytics from database");
+        
+        List<Campaign> campaigns = campaignRepository.findAll();
+        
+        return campaigns.stream().map(campaign -> {
+            // Calculate progress percentage
+            Double progressPercentage = 0.0;
+            if (campaign.getTotalRecipients() != null && campaign.getTotalRecipients() > 0) {
+                progressPercentage = (double) campaign.getSentCount() / campaign.getTotalRecipients() * 100;
+            }
+            
+            return CampaignAnalyticsDto.builder()
+                .id(campaign.getId())
+                .name(campaign.getName())
+                .description(campaign.getDescription())
+                .status(campaign.getStatus())
+                .totalRecipients(campaign.getTotalRecipients())
+                .sentCount(campaign.getSentCount())
+                .deliveredCount(campaign.getDeliveredCount())
+                .openedCount(campaign.getOpenedCount())
+                .clickedCount(campaign.getClickedCount())
+                .bouncedCount(campaign.getBouncedCount())
+                .unsubscribedCount(campaign.getUnsubscribedCount())
+                .openRate(campaign.getOpenRate())
+                .clickRate(campaign.getClickRate())
+                .bounceRate(campaign.getBounceRate())
+                .unsubscribeRate(campaign.getUnsubscribeRate())
+                .progressPercentage(Math.round(progressPercentage * 100.0) / 100.0)
+                .createdAt(campaign.getCreatedAt())
+                .startedAt(campaign.getStartedAt())
+                .completedAt(campaign.getCompletedAt())
+                .build();
+        }).collect(Collectors.toList());
+    }
+    
+    public List<TemplateAnalyticsDto> getTemplateAnalytics(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Calculating template analytics from database");
+        
+        List<EmailTemplate> templates = emailTemplateRepository.findAll();
+        
+        return templates.stream().map(template -> {
+            // Get usage statistics for this template
+            Long totalUsage = emailEventRepository.countByCampaignTemplateId(template.getId());
+            Long totalOpens = emailEventRepository.countByCampaignTemplateIdAndEventType(template.getId(), EmailEventType.OPENED);
+            Long totalClicks = emailEventRepository.countByCampaignTemplateIdAndEventType(template.getId(), EmailEventType.CLICKED);
+            
+            // Calculate rates
+            Double openRate = totalUsage > 0 ? (double) totalOpens / totalUsage * 100 : 0.0;
+            Double clickRate = totalUsage > 0 ? (double) totalClicks / totalUsage * 100 : 0.0;
+            
+            // Get last used date
+            LocalDateTime lastUsedAt = emailEventRepository.findLatestByCampaignTemplateId(template.getId());
+            
+            return TemplateAnalyticsDto.builder()
+                .id(template.getId())
+                .name(template.getName())
+                .description(template.getDescription())
+                .totalUsage(totalUsage.intValue())
+                .totalOpens(totalOpens.intValue())
+                .totalClicks(totalClicks.intValue())
+                .openRate(Math.round(openRate * 100.0) / 100.0)
+                .clickRate(Math.round(clickRate * 100.0) / 100.0)
+                .createdAt(template.getCreatedAt())
+                .lastUsedAt(lastUsedAt)
+                .build();
+        }).collect(Collectors.toList());
+    }
+    
+    public List<RecentActivityDto> getRecentActivities(int limit) {
+        log.info("Fetching recent activities from database");
+        
+        List<ActivityLog> activities = activityLogRepository.findTop10ByOrderByCreatedAtDesc();
+        
+        return activities.stream().limit(limit).map(activity -> {
+            String timeAgo = getTimeAgo(activity.getCreatedAt());
+            
+            return RecentActivityDto.builder()
+                .id(activity.getId())
+                .type(activity.getActivityType())
+                .title(activity.getTitle())
+                .description(activity.getDescription())
+                .timeAgo(timeAgo)
+                .createdAt(activity.getCreatedAt())
+                .entityType(activity.getEntityType())
+                .entityId(activity.getEntityId())
+                .metadata(activity.getMetadata())
+                .build();
+        }).collect(Collectors.toList());
     }
 }
