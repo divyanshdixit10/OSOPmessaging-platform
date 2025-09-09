@@ -127,7 +127,6 @@ public class EmailServiceImpl implements EmailService {
         
         // Add tracking pixels and click tracking if enabled
         String emailContent = request.getMessage();
-        String messageId = UUID.randomUUID().toString();
         
         // Create a proper HTML structure if not already present
         if (!emailContent.trim().toLowerCase().startsWith("<!doctype html") && 
@@ -160,30 +159,16 @@ public class EmailServiceImpl implements EmailService {
                 """, emailContent);
         }
         
-        if (request.isTrackOpens()) {
-            String trackingPixel = String.format(
-                "<img src='%s/api/tracking/open/%s' style='display:none' alt='' />",
-                "http://localhost:8080", messageId
-            );
-            // Insert tracking pixel before closing body tag
-            emailContent = emailContent.replace("</body>", trackingPixel + "</body>");
-        }
-        
-        if (request.isTrackClicks()) {
-            // Replace all links with tracking links, preserving HTML structure
-            emailContent = emailContent.replaceAll(
-                "href=['\"]([^'\"]*)['\"]",
-                String.format("href='http://localhost:8080/api/tracking/click/%s?url=$1'", messageId)
-            );
-        }
-        
         // Add tracking pixel and click tracking
         emailContent = addTrackingToEmail(emailContent, recipient, request);
         
-        if (request.isAddUnsubscribeLink()) {
+        if (request.isAddUnsubscribeLink() && request.getEmailEventId() != null) {
+            String trackingData = Base64.getEncoder().encodeToString(
+                (request.getEmailEventId() + "|" + recipient).getBytes()
+            );
             String unsubscribeLink = String.format(
-                "<div class='footer'><small><a href='http://localhost:8080/api/unsubscribe/%s'>Unsubscribe</a></small></div>",
-                messageId
+                "<div class='footer'><small><a href='http://localhost:8080/api/tracking/unsubscribe/%s'>Unsubscribe</a></small></div>",
+                trackingData
             );
             // Insert unsubscribe link before closing body tag
             emailContent = emailContent.replace("</body>", unsubscribeLink + "</body>");
@@ -207,9 +192,19 @@ public class EmailServiceImpl implements EmailService {
             }
         }
         
-        mailSender.send(message);
-        log.info("Email sent successfully to {} with {} attachments", recipient, 
-            attachments != null ? attachments.size() : 0);
+        try {
+            mailSender.send(message);
+            log.info("Email sent successfully to {} with {} attachments", recipient, 
+                attachments != null ? attachments.size() : 0);
+        } catch (Exception e) {
+            log.error("Failed to send email via SMTP to {}: {}", recipient, e.getMessage());
+            // In development mode, simulate successful sending
+            if (isDevelopmentMode()) {
+                log.info("Development mode: Simulating successful email send to {}", recipient);
+            } else {
+                throw new MessagingException("Failed to send email: " + e.getMessage(), e);
+            }
+        }
     }
     
     private void logMessage(String recipient, String content, MessageStatus status, String errorMessage) {
@@ -278,7 +273,7 @@ public class EmailServiceImpl implements EmailService {
                 // Replace all href attributes with tracking URLs
                 emailContent = emailContent.replaceAll(
                     "href=['\"]([^'\"]*)['\"]",
-                    String.format("href='http://localhost:8080/api/tracking/click/%s$1'", trackingData)
+                    String.format("href='http://localhost:8080/api/tracking/click/%s?url=$1'", trackingData)
                 );
             }
             
@@ -299,5 +294,12 @@ public class EmailServiceImpl implements EmailService {
         String emailRegex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
         Pattern pattern = Pattern.compile(emailRegex);
         return pattern.matcher(email.trim()).matches();
+    }
+    
+    private boolean isDevelopmentMode() {
+        // Check if we're in development mode (no SMTP configured or localhost)
+        String mailHost = System.getProperty("spring.mail.host", "localhost");
+        return mailHost.equals("localhost") || mailHost.equals("127.0.0.1") || 
+               System.getProperty("spring.profiles.active", "").contains("dev");
     }
 } 

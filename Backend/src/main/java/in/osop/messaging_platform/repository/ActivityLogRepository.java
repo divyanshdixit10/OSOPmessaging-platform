@@ -4,47 +4,87 @@ import in.osop.messaging_platform.model.ActivityLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Repository for ActivityLog entity
+ */
 @Repository
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
     
     /**
-     * Find recent activities ordered by creation date descending
+     * Find activities by entity type and ID
      */
-    Page<ActivityLog> findByOrderByCreatedAtDesc(Pageable pageable);
+    Page<ActivityLog> findByEntityTypeAndEntityIdOrderByCreatedAtDesc(
+            String entityType, Long entityId, Pageable pageable);
+    
+    /**
+     * Find activities by user
+     */
+    Page<ActivityLog> findByPerformedByOrderByCreatedAtDesc(String performedBy, Pageable pageable);
     
     /**
      * Find activities by type
      */
-    List<ActivityLog> findByActivityTypeOrderByCreatedAtDesc(ActivityLog.ActivityType activityType);
+    Page<ActivityLog> findByActivityTypeOrderByCreatedAtDesc(ActivityLog.ActivityType activityType, Pageable pageable);
     
     /**
-     * Find activities by entity type and entity ID
+     * Find activities by type (simple list)
      */
-    List<ActivityLog> findByEntityTypeAndEntityIdOrderByCreatedAtDesc(String entityType, Long entityId);
+    List<ActivityLog> findByActivityType(ActivityLog.ActivityType activityType);
     
     /**
-     * Find activities within date range
+     * Find all activities ordered by timestamp
      */
-    List<ActivityLog> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime startDate, LocalDateTime endDate);
+    Page<ActivityLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
     
     /**
-     * Find recent activities for dashboard (last 10)
+     * Find top 10 recent activities
      */
-    @Query("SELECT a FROM ActivityLog a ORDER BY a.createdAt DESC")
     List<ActivityLog> findTop10ByOrderByCreatedAtDesc();
     
     /**
-     * Count activities by type within date range
+     * Find activities by time range
      */
-    @Query("SELECT COUNT(a) FROM ActivityLog a WHERE a.activityType = :activityType AND a.createdAt BETWEEN :startDate AND :endDate")
-    Long countByActivityTypeAndCreatedAtBetween(@Param("activityType") ActivityLog.ActivityType activityType, 
-                                               @Param("startDate") LocalDateTime startDate, 
-                                               @Param("endDate") LocalDateTime endDate);
+    Page<ActivityLog> findByCreatedAtBetweenOrderByCreatedAtDesc(
+            LocalDateTime start, LocalDateTime end, Pageable pageable);
+    
+    /**
+     * Find activities by entity type
+     */
+    Page<ActivityLog> findByEntityTypeOrderByCreatedAtDesc(String entityType, Pageable pageable);
+    
+    /**
+     * Find activities by type and entity type
+     */
+    Page<ActivityLog> findByActivityTypeAndEntityTypeOrderByCreatedAtDesc(
+            ActivityLog.ActivityType activityType, String entityType, Pageable pageable);
+    
+    /**
+     * Count activities by type
+     */
+    long countByActivityType(ActivityLog.ActivityType activityType);
+    
+    /**
+     * Count activities by entity type and ID
+     */
+    long countByEntityTypeAndEntityId(String entityType, Long entityId);
+    
+    /**
+     * Find recent activities by entity type and ID
+     */
+    List<ActivityLog> findTop10ByEntityTypeAndEntityIdOrderByCreatedAtDesc(String entityType, Long entityId);
+    
+    /**
+     * Find activities by entity type and ID (simple list)
+     */
+    List<ActivityLog> findByEntityTypeAndEntityId(String entityType, Long entityId);
+    
+    /**
+     * Find activities by performed by (simple list)
+     */
+    List<ActivityLog> findByPerformedBy(String performedBy);
 }

@@ -64,26 +64,28 @@ public class EmailTrackingController {
     }
 
     @GetMapping("/click/{encodedData}")
-    public ResponseEntity<String> trackEmailClick(@PathVariable String encodedData, HttpServletRequest request) {
+    public ResponseEntity<String> trackEmailClick(
+            @PathVariable String encodedData, 
+            @RequestParam("url") String originalUrl,
+            HttpServletRequest request) {
         try {
             // Decode the tracking data
             String decodedData = new String(Base64.getDecoder().decode(encodedData));
             String[] parts = decodedData.split("\\|");
             
-            if (parts.length >= 3) {
+            if (parts.length >= 2) {
                 Long emailEventId = Long.parseLong(parts[0]);
                 String email = parts[1];
-                String originalUrl = parts[2];
                 
                 // Get client IP and User Agent
                 String ipAddress = getClientIpAddress(request);
                 String userAgent = request.getHeader("User-Agent");
                 
-                            // Track the email click
-            emailTrackingService.trackEmailClickedByEventId(emailEventId, email, originalUrl, ipAddress, userAgent);
-            
-            // Also track with delivery tracking service
-            emailDeliveryTrackingService.trackEmailClick(emailEventId, originalUrl, ipAddress, userAgent);
+                // Track the email click
+                emailTrackingService.trackEmailClickedByEventId(emailEventId, email, originalUrl, ipAddress, userAgent);
+                
+                // Also track with delivery tracking service
+                emailDeliveryTrackingService.trackEmailClick(emailEventId, originalUrl, ipAddress, userAgent);
                 
                 log.info("Email click tracked for: {} to URL: {} from IP: {}", email, originalUrl, ipAddress);
                 

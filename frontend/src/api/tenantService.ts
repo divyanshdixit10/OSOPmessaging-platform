@@ -116,80 +116,80 @@ export interface BillingHistory {
 export const tenantService = {
   // Get current tenant
   getCurrentTenant: (): Promise<ApiResponse<Tenant>> =>
-    api.get<Tenant>('/api/tenant/current'),
+    api.get<Tenant>('/tenant/current'),
 
   // Get tenant by ID
   getTenantById: (id: number): Promise<ApiResponse<Tenant>> =>
-    api.get<Tenant>(`/api/tenant/${id}`),
+    api.get<Tenant>(`/tenant/${id}`),
 
   // Get tenant by subdomain
   getTenantBySubdomain: (subdomain: string): Promise<ApiResponse<Tenant>> =>
-    api.get<Tenant>(`/api/tenant/subdomain/${subdomain}`),
+    api.get<Tenant>(`/tenant/subdomain/${subdomain}`),
 
   // Get all tenants (admin only)
   getAllTenants: (page = 0, size = 20): Promise<ApiResponse<PaginatedResponse<Tenant>>> =>
-    api.get<PaginatedResponse<Tenant>>(`/api/tenant?page=${page}&size=${size}`),
+    api.get<PaginatedResponse<Tenant>>(`/tenant?page=${page}&size=${size}`),
 
   // Create new tenant
   createTenant: (data: CreateTenantRequest): Promise<ApiResponse<Tenant>> =>
-    api.post<Tenant>('/api/tenant', data),
+    api.post<Tenant>('/tenant', data),
 
   // Update tenant
   updateTenant: (id: number, data: UpdateTenantRequest): Promise<ApiResponse<Tenant>> =>
-    api.put<Tenant>(`/api/tenant/${id}`, data),
+    api.put<Tenant>(`/tenant/${id}`, data),
 
   // Delete tenant
   deleteTenant: (id: number): Promise<ApiResponse<void>> =>
-    api.delete<void>(`/api/tenant/${id}`),
+    api.delete<void>(`/tenant/${id}`),
 
   // Suspend tenant
   suspendTenant: (id: number, reason: string): Promise<ApiResponse<void>> =>
-    api.post<void>(`/api/tenant/${id}/suspend`, { reason }),
+    api.post<void>(`/tenant/${id}/suspend`, { reason }),
 
   // Activate tenant
   activateTenant: (id: number): Promise<ApiResponse<void>> =>
-    api.post<void>(`/api/tenant/${id}/activate`),
+    api.post<void>(`/tenant/${id}/activate`),
 
   // Check quota
   checkQuota: (data: TenantQuotaCheck): Promise<ApiResponse<{ allowed: boolean; reason?: string }>> =>
-    api.post<{ allowed: boolean; reason?: string }>('/api/tenant/quota/check', data),
+    api.post<{ allowed: boolean; reason?: string }>('/tenant/quota/check', data),
 
   // Get usage statistics
   getUsageStats: (): Promise<ApiResponse<UsageStats>> =>
-    api.get<UsageStats>('/api/tenant/usage-stats'),
+    api.get<UsageStats>('/tenant/usage-stats'),
 
   // Upgrade plan
   upgradePlan: (plan: string): Promise<ApiResponse<Tenant>> =>
-    api.post<Tenant>('/api/tenant/upgrade-plan', { plan }),
+    api.post<Tenant>('/tenant/upgrade-plan', { plan }),
 
   // Downgrade plan
   downgradePlan: (plan: string): Promise<ApiResponse<Tenant>> =>
-    api.post<Tenant>('/api/tenant/downgrade-plan', { plan }),
+    api.post<Tenant>('/tenant/downgrade-plan', { plan }),
 
   // Get billing history
   getBillingHistory: (page = 0, size = 20): Promise<ApiResponse<PaginatedResponse<BillingHistory>>> =>
-    api.get<PaginatedResponse<BillingHistory>>(`/api/tenant/billing-history?page=${page}&size=${size}`),
+    api.get<PaginatedResponse<BillingHistory>>(`/tenant/billing-history?page=${page}&size=${size}`),
 
   // Create Stripe checkout session
   createCheckoutSession: (plan: string): Promise<ApiResponse<{ sessionId: string; url: string }>> =>
-    api.post<{ sessionId: string; url: string }>('/api/tenant/billing/checkout', { plan }),
+    api.post<{ sessionId: string; url: string }>('/tenant/billing/checkout', { plan }),
 
   // Create Stripe customer portal session
   createCustomerPortalSession: (): Promise<ApiResponse<{ url: string }>> =>
-    api.post<{ url: string }>('/api/tenant/billing/portal'),
+    api.post<{ url: string }>('/tenant/billing/portal'),
 
   // Upload logo
   uploadLogo: (file: File): Promise<ApiResponse<{ logoUrl: string }>> => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.upload<{ logoUrl: string }>('/api/tenant/upload-logo', formData);
+    return api.upload<{ logoUrl: string }>('/tenant/upload-logo', formData);
   },
 
   // Get tenant settings
   getSettings: (): Promise<ApiResponse<Record<string, any>>> =>
-    api.get<Record<string, any>>('/api/tenant/settings'),
+    api.get<Record<string, any>>('/tenant/settings'),
 
   // Update tenant settings
   updateSettings: (settings: Record<string, any>): Promise<ApiResponse<void>> =>
-    api.put<void>('/api/tenant/settings', settings),
+    api.put<void>('/tenant/settings', settings),
 };

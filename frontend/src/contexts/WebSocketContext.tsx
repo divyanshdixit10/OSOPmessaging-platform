@@ -29,6 +29,8 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
     connect();
 
     return () => {
+      // Clean up all subscriptions before disconnecting
+      webSocketService.unsubscribeAll();
       webSocketService.disconnect();
       setConnected(false);
     };

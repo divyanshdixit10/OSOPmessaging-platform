@@ -24,6 +24,10 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     @Query("SELECT t FROM Tenant t WHERE t.status = 'TRIAL' AND t.trialEndsAt < :now")
     List<Tenant> findExpiredTrials(@Param("now") LocalDateTime now);
     
+    List<Tenant> findByStatusAndTrialEndsAtBefore(Tenant.TenantStatus status, LocalDateTime date);
+    
+    List<Tenant> findByNextBillingDateBefore(LocalDateTime date);
+    
     @Query("SELECT t FROM Tenant t WHERE t.nextBillingDate <= :date AND t.status = 'ACTIVE'")
     List<Tenant> findTenantsForBilling(@Param("date") LocalDateTime date);
     

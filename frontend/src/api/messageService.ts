@@ -73,7 +73,7 @@ export const sendMessage = async (data: MessageRequest): Promise<MessageResponse
     });
 
     const response = await axios.post<MessageResponse>(
-      '/api/message/send-with-attachment',
+      '/message/send-with-attachment',
       formData,
       {
         headers: {
@@ -108,7 +108,7 @@ export const sendMessage = async (data: MessageRequest): Promise<MessageResponse
 export const sendBulkEmail = async (formData: FormData): Promise<MessageResponse> => {
   try {
     const response = await axios.post<MessageResponse>(
-      '/api/message/email/bulk',
+      '/message/email/bulk',
       formData,
       {
         headers: {

@@ -35,6 +35,7 @@ import {
   FiUser,
   FiLogOut,
   FiChevronDown,
+  FiCode,
 } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
   { name: 'Send Email', icon: FiMail, path: '/send-email' },
   { name: 'Templates', icon: FiFileText, path: '/templates' },
   { name: 'Analytics', icon: FiBarChart, path: '/analytics' },
+  { name: 'API Docs', icon: FiCode, path: '/api-docs' },
   { name: 'Settings', icon: FiSettings, path: '/settings' },
 ];
 

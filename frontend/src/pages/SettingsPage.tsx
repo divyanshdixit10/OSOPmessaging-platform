@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { ApiKeyManager } from '../components/settings/ApiKeyManager';
+import { WebhookManager } from '../components/settings/WebhookManager';
 import {
   Box,
   VStack,
@@ -32,6 +34,7 @@ import {
   AlertDescription,
   Icon,
   useColorModeValue,
+  Code,
 } from '@chakra-ui/react';
 import { IconType } from 'react-icons';
 import {
@@ -46,6 +49,8 @@ import {
   FiKey,
   FiDownload,
   FiUpload,
+  FiCode,
+  FiLink,
 } from 'react-icons/fi';
 
 interface UserProfile {
@@ -208,32 +213,44 @@ export const SettingsPage: React.FC = () => {
       </Box>
 
       <Tabs variant="enclosed" colorScheme="brand">
-        <TabList>
-          <Tab>
-            <HStack spacing={2}>
-              <Icon as={FiUser as any} />
-              <Text>Profile</Text>
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack spacing={2}>
-              <Icon as={FiBell as any} />
-              <Text>Notifications</Text>
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack spacing={2}>
-              <Icon as={FiShield as any} />
-              <Text>Security</Text>
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack spacing={2}>
-              <Icon as={FiGlobe as any} />
-              <Text>Platform</Text>
-            </HStack>
-          </Tab>
-        </TabList>
+          <TabList>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiUser as any} />
+                <Text>Profile</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiBell as any} />
+                <Text>Notifications</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiShield as any} />
+                <Text>Security</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiCode as any} />
+                <Text>API Keys</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiLink as any} />
+                <Text>Webhooks</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiGlobe as any} />
+                <Text>Platform</Text>
+              </HStack>
+            </Tab>
+          </TabList>
 
         <TabPanels>
           {/* Profile Tab */}
@@ -603,6 +620,44 @@ export const SettingsPage: React.FC = () => {
                 </VStack>
               </CardBody>
             </Card>
+          </TabPanel>
+
+          {/* API Keys Tab */}
+          <TabPanel p={0} pt={6}>
+            <Box>
+              <Card>
+                <CardHeader>
+                  <Heading size="md" color="gray.800">
+                    API Keys
+                  </Heading>
+                  <Text color="gray.600" mt={2}>
+                    Create and manage API keys for programmatic access to the platform.
+                  </Text>
+                </CardHeader>
+                <CardBody>
+                  <ApiKeyManager />
+                </CardBody>
+              </Card>
+            </Box>
+          </TabPanel>
+
+          {/* Webhooks Tab */}
+          <TabPanel p={0} pt={6}>
+            <Box>
+              <Card>
+                <CardHeader>
+                  <Heading size="md" color="gray.800">
+                    Webhooks
+                  </Heading>
+                  <Text color="gray.600" mt={2}>
+                    Configure webhook endpoints to receive real-time notifications about events.
+                  </Text>
+                </CardHeader>
+                <CardBody>
+                  <WebhookManager />
+                </CardBody>
+              </Card>
+            </Box>
           </TabPanel>
 
           {/* Platform Tab */}

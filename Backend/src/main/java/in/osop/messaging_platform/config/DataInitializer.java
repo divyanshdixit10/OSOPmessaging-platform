@@ -1,7 +1,12 @@
 package in.osop.messaging_platform.config;
 
 import in.osop.messaging_platform.model.*;
-import in.osop.messaging_platform.repository.*;
+import in.osop.messaging_platform.repository.UserRepository;
+import in.osop.messaging_platform.repository.SubscriberRepository;
+import in.osop.messaging_platform.repository.EmailTemplateRepository;
+import in.osop.messaging_platform.repository.CampaignRepository;
+import in.osop.messaging_platform.repository.EmailEventRepository;
+import in.osop.messaging_platform.repository.ActivityLogRepository;
 import in.osop.messaging_platform.service.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -334,7 +339,7 @@ public class DataInitializer implements CommandLineRunner {
                     .activityType(activityTypes[i])
                     .title(activities[i].split(" - ")[0])
                     .description(activities[i])
-                    .userId("admin@osop.com")
+                    .performedBy("admin@osop.com")
                     .entityType(i < 3 ? "campaign" : i < 5 ? "template" : "subscriber")
                     .entityId(i < 3 ? (campaigns.isEmpty() ? 1L : campaigns.get(0).getId()) : 
                              i < 5 ? (templates.isEmpty() ? 1L : templates.get(0).getId()) : 

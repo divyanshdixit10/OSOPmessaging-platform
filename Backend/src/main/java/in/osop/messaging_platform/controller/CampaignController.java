@@ -1,7 +1,9 @@
 package in.osop.messaging_platform.controller;
 
 import in.osop.messaging_platform.dto.CampaignDto;
+import in.osop.messaging_platform.model.CampaignProgress;
 import in.osop.messaging_platform.service.CampaignService;
+import in.osop.messaging_platform.service.CampaignExecutionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +31,7 @@ import java.util.Map;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final CampaignExecutionService campaignExecutionService;
 
     @PostMapping
     @Operation(summary = "Create a new campaign", description = "Create a new email campaign with the provided details")
@@ -92,7 +96,8 @@ public class CampaignController {
     @ApiResponse(responseCode = "400", description = "Campaign cannot be started")
     public ResponseEntity<CampaignDto> startCampaign(@PathVariable Long id) {
         log.info("Starting campaign with ID: {}", id);
-        CampaignDto started = campaignService.startCampaign(id);
+        campaignExecutionService.executeCampaign(id);
+        CampaignDto started = campaignService.getCampaignById(id);
         return ResponseEntity.ok(started);
     }
 
@@ -103,7 +108,8 @@ public class CampaignController {
     @ApiResponse(responseCode = "400", description = "Campaign cannot be paused")
     public ResponseEntity<CampaignDto> pauseCampaign(@PathVariable Long id) {
         log.info("Pausing campaign with ID: {}", id);
-        CampaignDto paused = campaignService.pauseCampaign(id);
+        campaignExecutionService.pauseCampaign(id);
+        CampaignDto paused = campaignService.getCampaignById(id);
         return ResponseEntity.ok(paused);
     }
 
@@ -114,7 +120,8 @@ public class CampaignController {
     @ApiResponse(responseCode = "400", description = "Campaign cannot be resumed")
     public ResponseEntity<CampaignDto> resumeCampaign(@PathVariable Long id) {
         log.info("Resuming campaign with ID: {}", id);
-        CampaignDto resumed = campaignService.resumeCampaign(id);
+        campaignExecutionService.resumeCampaign(id);
+        CampaignDto resumed = campaignService.getCampaignById(id);
         return ResponseEntity.ok(resumed);
     }
 
@@ -125,7 +132,8 @@ public class CampaignController {
     @ApiResponse(responseCode = "400", description = "Campaign cannot be cancelled")
     public ResponseEntity<CampaignDto> cancelCampaign(@PathVariable Long id) {
         log.info("Cancelling campaign with ID: {}", id);
-        CampaignDto cancelled = campaignService.cancelCampaign(id);
+        campaignExecutionService.cancelCampaign(id);
+        CampaignDto cancelled = campaignService.getCampaignById(id);
         return ResponseEntity.ok(cancelled);
     }
 
@@ -173,5 +181,52 @@ public class CampaignController {
         log.info("Fetching running campaigns");
         List<CampaignDto> campaigns = campaignService.getRunningCampaigns();
         return ResponseEntity.ok(campaigns);
+    }
+    
+    @GetMapping("/{id}/progress")
+    @Operation(summary = "Get campaign progress", description = "Get detailed progress information for a campaign")
+    @ApiResponse(responseCode = "200", description = "Campaign progress retrieved successfully")
+    @ApiResponse(responseCode = "404", description = "Campaign not found")
+    public ResponseEntity<CampaignProgress> getCampaignProgress(@PathVariable Long id) {
+        log.info("Fetching progress for campaign with ID: {}", id);
+        CampaignProgress progress = campaignExecutionService.getCampaignProgress(id);
+        return ResponseEntity.ok(progress);
+    }
+    
+    @PostMapping("/{id}/test")
+    @Operation(summary = "Send test emails", description = "Send test emails for a campaign")
+    @ApiResponse(responseCode = "200", description = "Test emails sent successfully")
+    @ApiResponse(responseCode = "404", description = "Campaign not found")
+    public ResponseEntity<Map<String, String>> sendTestEmails(
+            @PathVariable Long id,
+            @RequestBody List<String> testEmails) {
+        log.info("Sending test emails for campaign with ID: {} to {} recipients", id, testEmails.size());
+        campaignExecutionService.sendTestEmails(id, testEmails);
+        return ResponseEntity.ok(Map.of("message", "Test emails sent successfully"));
+    }
+    
+    @PostMapping("/{id}/schedule")
+    @Operation(summary = "Schedule campaign", description = "Schedule a campaign for future execution")
+    @ApiResponse(responseCode = "200", description = "Campaign scheduled successfully")
+    @ApiResponse(responseCode = "404", description = "Campaign not found")
+    @ApiResponse(responseCode = "400", description = "Campaign cannot be scheduled")
+    public ResponseEntity<CampaignDto> scheduleCampaign(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> scheduleRequest) {
+        String scheduledTimeStr = scheduleRequest.get("scheduledTime");
+        if (scheduledTimeStr == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        try {
+            LocalDateTime scheduledTime = LocalDateTime.parse(scheduledTimeStr);
+            log.info("Scheduling campaign with ID: {} for execution at {}", id, scheduledTime);
+            campaignExecutionService.scheduleCampaign(id, scheduledTime);
+            CampaignDto scheduled = campaignService.getCampaignById(id);
+            return ResponseEntity.ok(scheduled);
+        } catch (Exception e) {
+            log.error("Failed to schedule campaign: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

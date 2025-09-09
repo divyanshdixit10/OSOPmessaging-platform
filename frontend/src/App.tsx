@@ -14,6 +14,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { EnhancedCampaignPage } from './pages/EnhancedCampaignPage';
 import { EnhancedTemplatesPage } from './pages/EnhancedTemplatesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ApiDocsPage } from './pages/ApiDocsPage';
 import { theme } from './theme';
 
 function App() {
@@ -82,6 +83,13 @@ function App() {
               <ProtectedRoute>
                 <AppLayout>
                   <SettingsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/api-docs" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <ApiDocsPage />
                 </AppLayout>
               </ProtectedRoute>
             } />
