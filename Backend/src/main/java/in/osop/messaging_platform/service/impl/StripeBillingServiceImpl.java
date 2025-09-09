@@ -5,7 +5,6 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
-import com.stripe.param.billingportal.SessionCreateParams as PortalSessionCreateParams;
 import in.osop.messaging_platform.model.Tenant;
 import in.osop.messaging_platform.repository.TenantRepository;
 import in.osop.messaging_platform.service.BillingService;
@@ -14,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -114,7 +113,7 @@ public class StripeBillingServiceImpl implements BillingService {
                 throw new IllegalArgumentException("No Stripe customer found for tenant");
             }
 
-            PortalSessionCreateParams params = PortalSessionCreateParams.builder()
+            com.stripe.param.billingportal.SessionCreateParams params = com.stripe.param.billingportal.SessionCreateParams.builder()
                     .setCustomer(tenant.getStripeCustomerId())
                     .setReturnUrl("https://yourdomain.com/billing")
                     .build();

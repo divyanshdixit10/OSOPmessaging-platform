@@ -39,4 +39,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     boolean existsBySubdomain(String subdomain);
     
     boolean existsByName(String name);
+    
+    Optional<Tenant> findByStripeCustomerId(String stripeCustomerId);
+    
+    Optional<Tenant> findByStripeSubscriptionId(String stripeSubscriptionId);
 }

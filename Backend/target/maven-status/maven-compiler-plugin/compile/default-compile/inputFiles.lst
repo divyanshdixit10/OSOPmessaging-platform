@@ -5,6 +5,7 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\confi
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\config\WebSocketConfig.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\AnalyticsController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\AuthController.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\BillingController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\CampaignController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\EmailTemplateController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\EmailTestController.java
@@ -15,12 +16,14 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\contr
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\RealTimeAnalyticsController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\SubscriberController.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\controller\WebSocketController.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\ApiResponse.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\AuthRequest.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\AuthResponse.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\CampaignAnalyticsDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\CampaignDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\CampaignProgressDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\CreateTemplateRequest.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\CreateTenantRequest.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\DashboardStatsDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\EmailTemplateDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\EmailTemplateFormData.java
@@ -38,7 +41,9 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\T
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\TemplateImportRequest.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\TemplateStatisticsDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\TemplateVersionDto.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\TenantDto.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\UpdateTemplateRequest.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\UpdateTenantRequest.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\dto\WebSocketMessage.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\exception\GlobalExceptionHandler.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\exception\MessagingException.java
@@ -56,6 +61,7 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\Subscriber.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\SubscriptionStatus.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\TemplateVersion.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\Tenant.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\User.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\model\UserRole.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\ActivityLogRepository.java
@@ -66,6 +72,7 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repos
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\MessageLogRepository.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\SubscriberRepository.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\TemplateVersionRepository.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\TenantRepository.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\repository\UserRepository.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\security\JwtAuthenticationFilter.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\security\JwtUtils.java
@@ -73,6 +80,7 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\secur
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\ActivityLogService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\AnalyticsService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\AsyncEmailService.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\BillingService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\CampaignService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\EmailDeliveryTrackingService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\EmailService.java
@@ -85,10 +93,13 @@ D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\servi
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\EmailValidationServiceImpl.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\MessageServiceImpl.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\SmsServiceImpl.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\StripeBillingServiceImpl.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\TenantServiceImpl.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\impl\WhatsAppServiceImpl.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\MessageService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\SmsService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\SubscriberService.java
+D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\TenantService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\UserService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\WebSocketService.java
 D:\OSOPmessaging-platform\Backend\src\main\java\in\osop\messaging_platform\service\WhatsAppService.java
