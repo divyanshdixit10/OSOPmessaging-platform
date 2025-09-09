@@ -71,6 +71,21 @@ public class User implements UserDetails {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
     
+    // Multi-tenant support
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+    
+    @Column(name = "tenant_id", insertable = false, updatable = false)
+    private Long tenantId;
+    
+    @Column(name = "is_tenant_admin")
+    @Builder.Default
+    private Boolean isTenantAdmin = false;
+    
+    @Column(name = "permissions", columnDefinition = "TEXT")
+    private String permissions; // JSON string with user-specific permissions
+    
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
