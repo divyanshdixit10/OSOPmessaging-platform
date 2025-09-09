@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-platform-frontend
+  namespace: osop-messaging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: messaging-platform-frontend
+  template:
+    metadata:
+      labels:
+        app: messaging-platform-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/yourusername/osop-messaging-platform-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: REACT_APP_API_URL
+          value: "https://api.yourdomain.com"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 2
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-platform-frontend-service
+  namespace: osop-messaging
+spec:
+  selector:
+    app: messaging-platform-frontend
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: messaging-platform-frontend-hpa
+  namespace: osop-messaging
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: messaging-platform-frontend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
