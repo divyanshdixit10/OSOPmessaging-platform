@@ -107,9 +107,9 @@ interface Notification {
   read: boolean;
 }
 
-export const useAppStore = create(
+export const useAppStore = create<AppState>()(
   persist(
-    (set: any, get: any) => ({
+    (set, get) => ({
       // Initial state
       user: null,
       isAuthenticated: false,
@@ -122,15 +122,15 @@ export const useAppStore = create(
       notifications: [],
 
       // Actions
-      setUser: (user: any) => set({ user, isAuthenticated: !!user }),
-      setToken: (token: any) => set({ token }),
-      setCurrentTenant: (currentTenant: any) => set({ currentTenant }),
-      setUsageStats: (usageStats: any) => set({ usageStats }),
-      toggleSidebar: () => set((state: any) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setTheme: (theme: any) => set({ theme }),
-      setLoading: (loading: any) => set({ loading }),
+      setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
+      setToken: (token: string | null) => set({ token }),
+      setCurrentTenant: (currentTenant: Tenant | null) => set({ currentTenant }),
+      setUsageStats: (usageStats: UsageStats | null) => set({ usageStats }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setTheme: (theme: 'light' | 'dark') => set({ theme }),
+      setLoading: (loading: boolean) => set({ loading }),
       
-      addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => set((state: any) => ({
+      addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => set((state) => ({
         notifications: [
           ...state.notifications,
           {
@@ -142,14 +142,14 @@ export const useAppStore = create(
         ]
       })),
       
-      removeNotification: (id: any) => set((state: any) => ({
-        notifications: state.notifications.filter((n: any) => n.id !== id)
+      removeNotification: (id: string) => set((state) => ({
+        notifications: state.notifications.filter((n) => n.id !== id)
       })),
       
       clearNotifications: () => set({ notifications: [] }),
       
       // Auth actions
-      login: (user: any, token: any) => set({
+      login: (user: User, token: string) => set({
         user,
         token,
         isAuthenticated: true,
@@ -165,17 +165,17 @@ export const useAppStore = create(
       }),
       
       // Tenant actions
-      updateTenantSettings: (settings: any) => set((state: any) => ({
+      updateTenantSettings: (settings: Partial<Tenant>) => set((state) => ({
         currentTenant: state.currentTenant ? { ...state.currentTenant, ...settings } : null
       })),
       
-      updateUsageStats: (stats: any) => set((state: any) => ({
+      updateUsageStats: (stats: Partial<UsageStats>) => set((state) => ({
         usageStats: state.usageStats ? { ...state.usageStats, ...stats } : null
       })),
     }),
     {
       name: 'osop-messaging-store',
-      partialize: (state: any) => ({
+      partialize: (state) => ({
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
