@@ -46,6 +46,7 @@ import {
   FiDownload,
 } from 'react-icons/fi';
 import { useAppStore } from '../../store/useAppStore';
+import { IconWrapper } from '../common/IconWrapper';
 
 interface AnalyticsData {
   totalEmails: number;
@@ -128,9 +129,9 @@ export const AnalyticsDashboard: React.FC = () => {
     title: string;
     value: string | number;
     change?: number;
-    icon: React.ElementType;
+    icon: any;
     color: string;
-  }> = ({ title, value, change, icon, color }) => (
+  }> = ({ title, value, change, icon: IconComponent, color }) => (
     <Card bg={cardBg} borderColor={borderColor}>
       <CardBody>
         <HStack justify="space-between" align="start">
@@ -150,7 +151,7 @@ export const AnalyticsDashboard: React.FC = () => {
               )}
             </Stat>
           </VStack>
-          <Icon as={icon} boxSize={8} color={color} />
+          <IconComponent size={32} color={color} />
         </HStack>
       </CardBody>
     </Card>
@@ -346,7 +347,7 @@ export const AnalyticsDashboard: React.FC = () => {
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={6}>
               <VStack align="start" spacing={2}>
                 <HStack>
-                  <Icon as={FiMail} color="blue.500" />
+                  <IconWrapper icon={FiMail} color="blue.500" />
                   <Text fontSize="sm" fontWeight="medium">Delivered</Text>
                 </HStack>
                 <Text fontSize="2xl" fontWeight="bold">
@@ -359,7 +360,7 @@ export const AnalyticsDashboard: React.FC = () => {
 
               <VStack align="start" spacing={2}>
                 <HStack>
-                  <Icon as={FiEye} color="green.500" />
+                  <IconWrapper icon={FiEye} color="green.500" />
                   <Text fontSize="sm" fontWeight="medium">Opened</Text>
                 </HStack>
                 <Text fontSize="2xl" fontWeight="bold">
@@ -372,7 +373,7 @@ export const AnalyticsDashboard: React.FC = () => {
 
               <VStack align="start" spacing={2}>
                 <HStack>
-                  <Icon as={FiMousePointer} color="purple.500" />
+                  <IconWrapper icon={FiMousePointer} color="purple.500" />
                   <Text fontSize="sm" fontWeight="medium">Clicked</Text>
                 </HStack>
                 <Text fontSize="2xl" fontWeight="bold">
@@ -385,7 +386,7 @@ export const AnalyticsDashboard: React.FC = () => {
 
               <VStack align="start" spacing={2}>
                 <HStack>
-                  <Icon as={FiX} color="red.500" />
+                  <IconWrapper icon={FiX} color="red.500" />
                   <Text fontSize="sm" fontWeight="medium">Bounced</Text>
                 </HStack>
                 <Text fontSize="2xl" fontWeight="bold">
@@ -398,7 +399,7 @@ export const AnalyticsDashboard: React.FC = () => {
 
               <VStack align="start" spacing={2}>
                 <HStack>
-                  <Icon as={FiDownload} color="orange.500" />
+                  <IconWrapper icon={FiDownload} color="orange.500" />
                   <Text fontSize="sm" fontWeight="medium">Unsubscribed</Text>
                 </HStack>
                 <Text fontSize="2xl" fontWeight="bold">

@@ -17,6 +17,7 @@ import {
   Divider,
   Badge,
   Progress,
+  Grid,
   useColorModeValue,
   useToast,
   Modal,
@@ -34,6 +35,7 @@ import { FiUpload, FiEdit, FiSave, FiX, FiDollarSign, FiUsers, FiMail, FiMessage
 import { ChromePicker } from 'react-color';
 import { useAppStore } from '../../store/useAppStore';
 import { tenantService, Tenant, UpdateTenantRequest } from '../../api/tenantService';
+import { IconWrapper } from '../common/IconWrapper';
 
 export const TenantSettings: React.FC = () => {
   const { currentTenant, updateTenantSettings } = useAppStore();
@@ -185,7 +187,7 @@ export const TenantSettings: React.FC = () => {
             {editing ? (
               <>
                 <Button
-                  leftIcon={<FiSave />}
+                  leftIcon={<IconWrapper icon={FiSave} />}
                   colorScheme="blue"
                   onClick={handleSave}
                   isLoading={loading}
@@ -193,7 +195,7 @@ export const TenantSettings: React.FC = () => {
                   Save Changes
                 </Button>
                 <Button
-                  leftIcon={<FiX />}
+                  leftIcon={<IconWrapper icon={FiX} />}
                   variant="outline"
                   onClick={() => {
                     setTenant(currentTenant);
@@ -205,7 +207,7 @@ export const TenantSettings: React.FC = () => {
               </>
             ) : (
               <Button
-                leftIcon={<FiEdit />}
+                leftIcon={<IconWrapper icon={FiEdit} />}
                 colorScheme="blue"
                 onClick={() => setEditing(true)}
               >
@@ -321,7 +323,7 @@ export const TenantSettings: React.FC = () => {
                         <Button
                           as="label"
                           htmlFor="logo-upload"
-                          leftIcon={<FiUpload />}
+                          leftIcon={<IconWrapper icon={FiUpload} />}
                           variant="outline"
                           size="sm"
                           isDisabled={!editing}
@@ -475,7 +477,7 @@ export const TenantSettings: React.FC = () => {
                   )}
 
                   <Button
-                    leftIcon={<FiDollarSign />}
+                    leftIcon={<IconWrapper icon={FiDollarSign} />}
                     colorScheme="blue"
                     variant="outline"
                     onClick={onOpen}
@@ -498,7 +500,7 @@ export const TenantSettings: React.FC = () => {
                   <Box>
                     <HStack justify="space-between" mb={2}>
                       <HStack>
-                        <FiUsers />
+                        <IconWrapper icon={FiUsers} />
                         <Text fontSize="sm">Users</Text>
                       </HStack>
                       <Text fontSize="sm" fontWeight="medium">
@@ -515,7 +517,7 @@ export const TenantSettings: React.FC = () => {
                   <Box>
                     <HStack justify="space-between" mb={2}>
                       <HStack>
-                        <FiMail />
+                        <IconWrapper icon={FiMail} />
                         <Text fontSize="sm">Emails/Month</Text>
                       </HStack>
                       <Text fontSize="sm" fontWeight="medium">
@@ -532,7 +534,7 @@ export const TenantSettings: React.FC = () => {
                   <Box>
                     <HStack justify="space-between" mb={2}>
                       <HStack>
-                        <FiMessageSquare />
+                        <IconWrapper icon={FiMessageSquare} />
                         <Text fontSize="sm">SMS/Month</Text>
                       </HStack>
                       <Text fontSize="sm" fontWeight="medium">

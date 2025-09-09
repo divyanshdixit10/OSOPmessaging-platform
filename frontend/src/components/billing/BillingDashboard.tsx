@@ -41,6 +41,7 @@ import {
   FiClock,
 } from 'react-icons/fi';
 import { useAppStore } from '../../store/useAppStore';
+import { IconWrapper } from '../common/IconWrapper';
 
 interface BillingPlan {
   id: string;
@@ -314,7 +315,7 @@ export const BillingDashboard: React.FC = () => {
                     <Badge colorScheme={getStatusColor(subscriptionStatus?.status || 'active')} size="lg">
                       {subscriptionStatus?.status || 'active'}
                     </Badge>
-                    <Icon as={getStatusIcon(subscriptionStatus?.status || 'active')} />
+                    <IconWrapper icon={getStatusIcon(subscriptionStatus?.status || 'active')} />
                   </HStack>
                   {currentTenant.trialEndsAt && (
                     <Text fontSize="sm" color="gray.500">
@@ -323,7 +324,7 @@ export const BillingDashboard: React.FC = () => {
                   )}
                 </VStack>
                 <Button
-                  leftIcon={<FiCreditCard />}
+                  leftIcon={<IconWrapper icon={FiCreditCard} />}
                   colorScheme="blue"
                   onClick={handleManageBilling}
                 >
@@ -371,9 +372,8 @@ export const BillingDashboard: React.FC = () => {
               <Card
                 key={plan.id}
                 bg={cardBg}
-                borderColor={borderColor}
-                borderWidth={currentTenant?.plan === plan.id ? 2 : 1}
                 borderColor={currentTenant?.plan === plan.id ? 'blue.500' : borderColor}
+                borderWidth={currentTenant?.plan === plan.id ? 2 : 1}
               >
                 <CardHeader>
                   <VStack spacing={2}>
@@ -393,7 +393,7 @@ export const BillingDashboard: React.FC = () => {
                     <VStack spacing={2} align="start">
                       {plan.features.map((feature, index) => (
                         <HStack key={index} spacing={2}>
-                          <Icon as={FiCheckCircle} color="green.500" boxSize={4} />
+                          <IconWrapper icon={FiCheckCircle} color="green.500" boxSize={4} />
                           <Text fontSize="sm">{feature}</Text>
                         </HStack>
                       ))}
@@ -421,7 +421,7 @@ export const BillingDashboard: React.FC = () => {
                 Billing History
               </Text>
               <Button
-                leftIcon={<FiDownload />}
+                leftIcon={<IconWrapper icon={FiDownload} />}
                 variant="outline"
                 size="sm"
               >
@@ -473,7 +473,7 @@ export const BillingDashboard: React.FC = () => {
                 <VStack spacing={2} align="start">
                   {selectedPlan?.features.map((feature, index) => (
                     <HStack key={index} spacing={2}>
-                      <Icon as={FiCheckCircle} color="green.500" boxSize={4} />
+                      <IconWrapper icon={FiCheckCircle} color="green.500" boxSize={4} />
                       <Text fontSize="sm">{feature}</Text>
                     </HStack>
                   ))}

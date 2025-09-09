@@ -17,8 +17,15 @@ export interface Tenant {
   name: string;
   subdomain: string;
   displayName: string;
-  status: string;
-  plan: string;
+  description?: string;
+  contactEmail: string;
+  contactPhone?: string;
+  companyName?: string;
+  companyAddress?: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'TRIAL';
+  plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+  planStartDate?: string;
+  planEndDate?: string;
   maxUsers: number;
   maxCampaignsPerMonth: number;
   maxEmailsPerMonth: number;
@@ -31,6 +38,9 @@ export interface Tenant {
   logoUrl?: string;
   timezone: string;
   locale: string;
+  trialEndsAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UsageStats {
@@ -75,7 +85,7 @@ interface AppState {
   toggleSidebar: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setLoading: (loading: boolean) => void;
-  addNotification: (notification: Omit<Notification, 'id'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
   
@@ -97,9 +107,9 @@ interface Notification {
   read: boolean;
 }
 
-export const useAppStore = create<AppState>()(
+export const useAppStore = create(
   persist(
-    (set, get) => ({
+    (set: any, get: any) => ({
       // Initial state
       user: null,
       isAuthenticated: false,
@@ -112,15 +122,15 @@ export const useAppStore = create<AppState>()(
       notifications: [],
 
       // Actions
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      setToken: (token) => set({ token }),
-      setCurrentTenant: (currentTenant) => set({ currentTenant }),
-      setUsageStats: (usageStats) => set({ usageStats }),
-      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setTheme: (theme) => set({ theme }),
-      setLoading: (loading) => set({ loading }),
+      setUser: (user: any) => set({ user, isAuthenticated: !!user }),
+      setToken: (token: any) => set({ token }),
+      setCurrentTenant: (currentTenant: any) => set({ currentTenant }),
+      setUsageStats: (usageStats: any) => set({ usageStats }),
+      toggleSidebar: () => set((state: any) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setTheme: (theme: any) => set({ theme }),
+      setLoading: (loading: any) => set({ loading }),
       
-      addNotification: (notification) => set((state) => ({
+      addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => set((state: any) => ({
         notifications: [
           ...state.notifications,
           {
@@ -132,14 +142,14 @@ export const useAppStore = create<AppState>()(
         ]
       })),
       
-      removeNotification: (id) => set((state) => ({
-        notifications: state.notifications.filter(n => n.id !== id)
+      removeNotification: (id: any) => set((state: any) => ({
+        notifications: state.notifications.filter((n: any) => n.id !== id)
       })),
       
       clearNotifications: () => set({ notifications: [] }),
       
       // Auth actions
-      login: (user, token) => set({
+      login: (user: any, token: any) => set({
         user,
         token,
         isAuthenticated: true,
@@ -155,17 +165,17 @@ export const useAppStore = create<AppState>()(
       }),
       
       // Tenant actions
-      updateTenantSettings: (settings) => set((state) => ({
+      updateTenantSettings: (settings: any) => set((state: any) => ({
         currentTenant: state.currentTenant ? { ...state.currentTenant, ...settings } : null
       })),
       
-      updateUsageStats: (stats) => set((state) => ({
+      updateUsageStats: (stats: any) => set((state: any) => ({
         usageStats: state.usageStats ? { ...state.usageStats, ...stats } : null
       })),
     }),
     {
       name: 'osop-messaging-store',
-      partialize: (state) => ({
+      partialize: (state: any) => ({
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
