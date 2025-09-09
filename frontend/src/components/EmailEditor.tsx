@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import './EmailEditor.css';
@@ -27,6 +27,7 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({
   onBodyChange,
   isPreview = false
 }) => {
+  const quillRef = useRef<ReactQuill>(null);
   const bgColor = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
@@ -82,6 +83,7 @@ export const EmailEditor: React.FC<EmailEditorProps> = ({
             />
           ) : (
             <ReactQuill
+              ref={quillRef}
               value={body}
               onChange={onBodyChange}
               modules={modules}

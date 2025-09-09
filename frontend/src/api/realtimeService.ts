@@ -1,14 +1,17 @@
 import axios from 'axios';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
-// WebSocket connection for real-time updates
+// WebSocket connection for real-time updates using SockJS + STOMP
 class RealTimeService {
-  private ws: WebSocket | null = null;
+  private stompClient: Client | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 3000;
   private listeners: Map<string, Function[]> = new Map();
+  private isConnected = false;
 
   constructor() {
     this.connect();
@@ -16,44 +19,85 @@ class RealTimeService {
 
   private connect() {
     try {
-      const wsUrl = `ws://localhost:8080/ws`;
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.emit('connected', {});
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.emit('message', data);
+      // Create STOMP client with SockJS
+      this.stompClient = new Client({
+        webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
+        debug: (str) => {
+          // Disable debug logging
+        },
+        onConnect: () => {
+          console.log('WebSocket connected via STOMP');
+          this.isConnected = true;
+          this.reconnectAttempts = 0;
+          this.emit('connected', {});
           
-          // Emit specific event types
-          if (data.type) {
-            this.emit(data.type, data);
-          }
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          // Subscribe to default topics
+          this.subscribeToDefaultTopics();
+        },
+        onStompError: (frame) => {
+          console.error('WebSocket STOMP error:', frame);
+          this.isConnected = false;
+          this.emit('error', frame);
+          this.reconnect();
+        },
+        onWebSocketError: (error) => {
+          console.error('WebSocket connection error:', error);
+          this.isConnected = false;
+          this.emit('error', error);
+          this.reconnect();
         }
-      };
-
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        this.emit('disconnected', {});
-        this.reconnect();
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.emit('error', error);
-      };
+      });
+      
+      this.stompClient.activate();
 
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
       this.reconnect();
     }
+  }
+
+  private subscribeToDefaultTopics() {
+    if (!this.stompClient) return;
+
+    // Subscribe to general message updates
+    this.stompClient.subscribe('/topic/messages', (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        this.emit('message', data);
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+      }
+    });
+
+    // Subscribe to email updates
+    this.stompClient.subscribe('/topic/email-updates', (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        this.emit('email_update', data);
+      } catch (error) {
+        console.error('Failed to parse email update:', error);
+      }
+    });
+
+    // Subscribe to analytics updates
+    this.stompClient.subscribe('/topic/analytics-updates', (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        this.emit('analytics_update', data);
+      } catch (error) {
+        console.error('Failed to parse analytics update:', error);
+      }
+    });
+
+    // Subscribe to dashboard updates
+    this.stompClient.subscribe('/topic/dashboard-updates', (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        this.emit('dashboard_update', data);
+      } catch (error) {
+        console.error('Failed to parse dashboard update:', error);
+      }
+    });
   }
 
   private reconnect() {
@@ -101,17 +145,21 @@ class RealTimeService {
   }
 
   public send(message: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+    if (this.stompClient && this.isConnected) {
+      this.stompClient.publish({
+        destination: '/app/message',
+        body: JSON.stringify(message)
+      });
     } else {
       console.warn('WebSocket is not connected');
     }
   }
 
   public disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.stompClient) {
+      this.stompClient.deactivate();
+      this.stompClient = null;
+      this.isConnected = false;
     }
   }
 }
